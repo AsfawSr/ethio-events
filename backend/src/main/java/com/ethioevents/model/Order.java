@@ -18,11 +18,11 @@ public class Order {
     @Column(name = "order_number", nullable = false, unique = true, length = 32)
     private String orderNumber;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "event_id", nullable = false)
     private Event event;
 
