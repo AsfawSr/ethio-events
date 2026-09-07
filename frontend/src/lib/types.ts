@@ -118,6 +118,26 @@ export interface PublicTicketDetails {
   securityHash: string;
 }
 
+export interface CreateTicketTypeRequest {
+  name: string;
+  description: string;
+  price: number;
+  totalCapacity: number;
+  maxPerUser: number;
+}
+
+export interface CreateEventRequest {
+  title: string;
+  description: string;
+  venueName: string;
+  venueAddress: string;
+  startTimeIsoUtc: string;
+  endTimeIsoUtc: string;
+  bannerImageUrl: string;
+  organizerName: string;
+  ticketTypes: CreateTicketTypeRequest[];
+}
+
 export interface ApiResponse<T> {
   success: boolean;
   data: T;

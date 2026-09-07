@@ -33,9 +33,14 @@ async function fetchApi<T>(endpoint: string, options?: RequestInit): Promise<T> 
 }
 
 export const api = {
-  // Public Event Discovery
+  // Public Event Discovery & Registration
   getEvents: () => fetchApi<EventSummary[]>('/events'),
   getEventBySlug: (slug: string) => fetchApi<EventDetail>(`/events/${slug}`),
+  createEvent: (data: any) =>
+    fetchApi<EventDetail>('/events', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
 
   // Frictionless Guest Checkout (10-Minute Hold)
   reserveGuestOrder: (data: GuestReserveRequest) =>
