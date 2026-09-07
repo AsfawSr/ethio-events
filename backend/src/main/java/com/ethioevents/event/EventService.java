@@ -9,12 +9,14 @@ import com.ethioevents.repository.EventRepository;
 import com.ethioevents.repository.TicketTypeRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
+@Transactional(readOnly = true)
 public class EventService {
 
     private final EventRepository eventRepository;
