@@ -1,0 +1,76 @@
+server:
+  port: 8080
+  servlet:
+    context-path: /
+
+spring:
+  application:
+    name: ethio-events-backend
+  threads:
+    virtual:
+      enabled: true
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/ethioevents_db}
+    username: ${SPRING_DATASOURCE_USERNAME:postgres}
+    password: ${SPRING_DATASOURCE_PASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-timeout: 20000
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+    open-in-view: false
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    locations: classpath:db/migration
+  data:
+    redis:
+      host: ${SPRING_REDIS_HOST:localhost}
+      port: ${SPRING_REDIS_PORT:6379}
+      timeout: 2000ms
+
+# EthioEvents Configuration
+ethioevents:
+  jwt:
+    secret: 404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
+    access-token-expiration-ms: 900000 # 15 minutes
+    refresh-token-expiration-ms: 2592000000 # 30 days
+  reservation:
+    lock-duration-minutes: 10
+    cleanup-cron: "*/15 * * * * *" # Run reaper every 15 seconds
+  telebirr:
+    app-id: "FABRIC_APP_ID_DEMO_2026"
+    app-secret: "TELEBIRR_FABRIC_SECRET_KEY_DEMO"
+    short-code: "100200"
+    notify-url: "http://localhost:8080/api/v1/payments/telebirr/notify"
+    return-url: "http://localhost:3000/orders/{orderNumber}/success"
+    api-url: "https://app.telebirr.et/apiaccess/payment/gateway/payment"
+    # 2048-bit RSA Mock Keys for dev testing
+    merchant-private-key-pkcs8: |
+      MIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQDHYe21N+iX4U1y
+      G5mXo0bWvQ1nC1m9b8hK...
+    telebirr-public-key: |
+      MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA3...
+  chapa:
+    secret-key: "CHASECK_TEST-demo-secret-key"
+    base-url: "https://api.chapa.co/v1"
+    webhook-secret: "demo-chapa-webhook-secret"
+  sms:
+    provider: "MOCK" # MOCK | ETHIO_TELECOM | AFRICASTALKING
+    mock-auto-verify: false
+  crypto:
+    # Ed25519 seed for master ticket digital signing (Base64 32-byte seed)
+    ed25519-seed: "VGVzdEVkaW8yMDI2RXZlbnRzU2VlZEZvclNpZ25pbmdLZXk="
+
+logging:
+  level:
+    com.ethioevents: DEBUG
+    org.springframework.security: INFO
+    org.hibernate.SQL: INFO
