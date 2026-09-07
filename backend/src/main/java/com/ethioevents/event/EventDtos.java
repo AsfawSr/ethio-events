@@ -59,6 +59,7 @@ public class EventDtos {
             String endTimeIsoUtc,
             String bannerImageUrl,
             String organizerName,
+            String organizerId,
             List<CreateTicketTypeRequest> ticketTypes
     ) {}
 

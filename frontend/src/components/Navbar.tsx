@@ -1,12 +1,22 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Ticket, QrCode, Sparkles, Phone, Compass } from 'lucide-react';
+import { Ticket, QrCode, Sparkles, Phone, Compass, Building2 } from 'lucide-react';
 import MyTicketsModal from './MyTicketsModal';
+import { authStorage } from '@/lib/auth';
+import { OrganizerSession } from '@/lib/types';
 
 export default function Navbar() {
   const [showMyTicketsModal, setShowMyTicketsModal] = useState(false);
+  const [organizerSession, setOrganizerSession] = useState<OrganizerSession | null>(null);
+
+  useEffect(() => {
+    setOrganizerSession(authStorage.getSession());
+    const handleAuth = () => setOrganizerSession(authStorage.getSession());
+    window.addEventListener('ethioevents_auth_changed', handleAuth);
+    return () => window.removeEventListener('ethioevents_auth_changed', handleAuth);
+  }, []);
 
   return (
     <>
@@ -32,20 +42,31 @@ export default function Navbar() {
           <nav className="flex items-center gap-2 sm:gap-3">
             <Link
               href="/"
-              className="hidden md:flex items-center gap-1.5 text-sm font-medium text-slate-300 hover:text-white px-3 py-2 rounded-lg hover:bg-white/5 transition"
+              className="hidden lg:flex items-center gap-1.5 text-sm font-medium text-slate-300 hover:text-white px-3 py-2 rounded-lg hover:bg-white/5 transition"
             >
               <Compass className="h-4 w-4 text-amber-400" />
               Explore
             </Link>
 
+            {/* Organizer Hub / Dashboard Link */}
+            <Link
+              href="/organizer"
+              className="flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-slate-200 bg-slate-900/90 hover:bg-slate-800 border border-slate-700 px-3 py-2 rounded-xl transition shadow-sm"
+            >
+              <Building2 className="h-4 w-4 text-amber-400" />
+              <span className="hidden sm:inline">
+                {organizerSession?.organizationName ? organizerSession.organizationName : 'Organizer Portal'}
+              </span>
+              <span className="sm:hidden">Organizer</span>
+            </Link>
+
             {/* Create Event Button */}
             <Link
               href="/events/create"
-              className="flex items-center gap-1.5 text-sm font-semibold text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 hover:border-amber-400/50 px-3 py-2 rounded-xl transition shadow-sm active:scale-95"
+              className="hidden sm:flex items-center gap-1.5 text-sm font-semibold text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 hover:border-amber-400/50 px-3 py-2 rounded-xl transition shadow-sm active:scale-95"
             >
               <Sparkles className="h-4 w-4 text-amber-400" />
-              <span className="hidden sm:inline">Register Event</span>
-              <span className="sm:hidden">+ Event</span>
+              <span>+ Event</span>
             </Link>
 
             {/* My Tickets Button (Zero-login on-demand lookup) */}
