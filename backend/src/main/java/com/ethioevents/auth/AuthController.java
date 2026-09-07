@@ -54,10 +54,12 @@ public class AuthController {
 
         // Check if user is also an organizer
         UUID organizerId = null;
+        String organizationName = null;
         if (user.getRole() == UserRole.ORGANIZER) {
             Optional<Organizer> orgOpt = organizerRepository.findByUserId(user.getId());
             if (orgOpt.isPresent()) {
                 organizerId = orgOpt.get().getId();
+                organizationName = orgOpt.get().getOrganizationName();
             }
         }
 
@@ -68,7 +70,54 @@ public class AuthController {
                 user.getPhoneNumber(),
                 user.getFullName(),
                 user.getRole().name(),
-                organizerId != null ? organizerId.toString() : null
+                organizerId != null ? organizerId.toString() : null,
+                organizationName
+        );
+
+        return ResponseEntity.ok(ApiResponse.ok(responseDto));
+    }
+
+    @PostMapping("/organizer/register")
+    public ResponseEntity<ApiResponse<AuthDtos.AuthResponseDto>> registerOrganizer(
+            @Valid @RequestBody AuthDtos.OrganizerRegisterDto request) {
+        String normalizedPhone = PhoneNormalizer.normalize(request.phoneNumber());
+
+        User user = userRepository.findByPhoneNumber(normalizedPhone).orElseGet(() -> {
+            User newUser = new User();
+            newUser.setPhoneNumber(normalizedPhone);
+            return newUser;
+        });
+
+        user.setFullName(request.fullName().trim());
+        if (request.email() != null && !request.email().isBlank()) {
+            user.setEmail(request.email().trim());
+        }
+        user.setRole(UserRole.ORGANIZER);
+        User savedUser = userRepository.save(user);
+
+        Organizer organizer = organizerRepository.findByUserId(savedUser.getId()).orElseGet(() -> {
+            Organizer newOrg = new Organizer();
+            newOrg.setUser(savedUser);
+            return newOrg;
+        });
+
+        organizer.setOrganizationName(request.organizationName().trim());
+        organizer.setBusinessLicenseNo(request.businessLicenseNo() != null ? request.businessLicenseNo().trim() : "");
+        organizer.setBankName(request.bankName().trim());
+        organizer.setBankAccountNo(request.bankAccountNo().trim());
+        organizer.setBankAccountName(request.bankAccountName().trim());
+        organizer.setStatus(com.ethioevents.model.OrganizerStatus.VERIFIED);
+        Organizer savedOrganizer = organizerRepository.save(organizer);
+
+        String token = jwtTokenProvider.generateAccessToken(savedUser, savedOrganizer.getId());
+        AuthDtos.AuthResponseDto responseDto = new AuthDtos.AuthResponseDto(
+                token,
+                savedUser.getId().toString(),
+                savedUser.getPhoneNumber(),
+                savedUser.getFullName(),
+                savedUser.getRole().name(),
+                savedOrganizer.getId().toString(),
+                savedOrganizer.getOrganizationName()
         );
 
         return ResponseEntity.ok(ApiResponse.ok(responseDto));

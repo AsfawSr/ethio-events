@@ -135,7 +135,45 @@ export interface CreateEventRequest {
   endTimeIsoUtc: string;
   bannerImageUrl: string;
   organizerName: string;
+  organizerId?: string;
   ticketTypes: CreateTicketTypeRequest[];
+}
+
+export interface OrganizerRegisterRequest {
+  phoneNumber: string;
+  fullName: string;
+  email?: string;
+  organizationName: string;
+  businessLicenseNo?: string;
+  bankName: string;
+  bankAccountNo: string;
+  bankAccountName: string;
+}
+
+export interface OrganizerProfile {
+  id: string;
+  organizationName: string;
+  businessLicenseNo: string;
+  bankName: string;
+  bankAccountNo: string;
+  bankAccountName: string;
+  status: string;
+  ownerName: string;
+  ownerPhone: string;
+  ownerEmail?: string;
+  totalEvents: number;
+  totalTicketsSold: number;
+  totalRevenueEtb: number;
+}
+
+export interface OrganizerSession {
+  token: string;
+  userId: string;
+  phoneNumber: string;
+  fullName: string;
+  role: string;
+  organizerId?: string;
+  organizationName?: string;
 }
 
 export interface ApiResponse<T> {

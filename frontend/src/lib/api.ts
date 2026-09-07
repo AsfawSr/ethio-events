@@ -4,21 +4,29 @@ import {
   EventSummary,
   GuestReserveRequest,
   OrderDetails,
+  OrganizerProfile,
+  OrganizerRegisterRequest,
+  OrganizerSession,
   PublicTicketDetails,
   ReservationResponse,
 } from './types';
+import { authStorage } from './auth';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1';
 
 async function fetchApi<T>(endpoint: string, options?: RequestInit): Promise<T> {
   const url = `${API_BASE}${endpoint}`;
   try {
+    const token = authStorage.getToken();
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(options?.headers as Record<string, string>),
+    };
+
     const res = await fetch(url, {
       ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        ...options?.headers,
-      },
+      headers,
     });
 
     const json: ApiResponse<T> = await res.json();
@@ -41,6 +49,16 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(data),
     }),
+
+  // Organizer Account & Dashboard
+  registerOrganizer: (data: OrganizerRegisterRequest) =>
+    fetchApi<OrganizerSession>('/auth/organizer/register', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  getOrganizerProfile: () => fetchApi<OrganizerProfile>('/organizer/me'),
+  getOrganizerEvents: () => fetchApi<EventSummary[]>('/organizer/my-events'),
 
   // Frictionless Guest Checkout (10-Minute Hold)
   reserveGuestOrder: (data: GuestReserveRequest) =>

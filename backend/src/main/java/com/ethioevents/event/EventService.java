@@ -106,8 +106,23 @@ public class EventService {
         }
 
         // Get or fallback to active organizer
-        Organizer organizer = organizerRepository.findAll().stream().findFirst().orElseThrow(() ->
-                new ApiException(HttpStatus.INTERNAL_SERVER_ERROR, "NO_ORGANIZER", "No registered organizer found in system"));
+        Organizer organizer = null;
+        if (request.organizerId() != null && !request.organizerId().isBlank()) {
+            try {
+                UUID orgUuid = UUID.fromString(request.organizerId().trim());
+                organizer = organizerRepository.findById(orgUuid).orElse(null);
+            } catch (Exception ignored) {}
+        }
+        if (organizer == null && request.organizerName() != null && !request.organizerName().isBlank()) {
+            organizer = organizerRepository.findAll().stream()
+                    .filter(o -> o.getOrganizationName().equalsIgnoreCase(request.organizerName().trim()))
+                    .findFirst()
+                    .orElse(null);
+        }
+        if (organizer == null) {
+            organizer = organizerRepository.findAll().stream().findFirst().orElseThrow(() ->
+                    new ApiException(HttpStatus.INTERNAL_SERVER_ERROR, "NO_ORGANIZER", "No registered organizer found in system"));
+        }
 
         String baseSlug = request.title().toLowerCase()
                 .replaceAll("[^a-z0-9]+", "-")

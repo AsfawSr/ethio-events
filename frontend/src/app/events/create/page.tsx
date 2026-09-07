@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -20,7 +20,8 @@ import {
   Users
 } from 'lucide-react';
 import { api } from '@/lib/api';
-import { CreateEventRequest, CreateTicketTypeRequest } from '@/lib/types';
+import { authStorage } from '@/lib/auth';
+import { CreateEventRequest, CreateTicketTypeRequest, OrganizerSession } from '@/lib/types';
 
 const PRESET_BANNERS = [
   {
@@ -53,6 +54,8 @@ const PRESET_VENUES = [
 export default function CreateEventPage() {
   const router = useRouter();
 
+  const [organizerSession, setOrganizerSession] = useState<OrganizerSession | null>(null);
+
   // Form State
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -60,6 +63,18 @@ export default function CreateEventPage() {
   const [venueAddress, setVenueAddress] = useState('');
   const [bannerImageUrl, setBannerImageUrl] = useState(PRESET_BANNERS[0].url);
   const [organizerName, setOrganizerName] = useState('Addis Events Group');
+
+  useEffect(() => {
+    const session = authStorage.getSession();
+    if (session) {
+      setOrganizerSession(session);
+      if (session.organizationName) {
+        setOrganizerName(session.organizationName);
+      } else if (session.fullName) {
+        setOrganizerName(session.fullName);
+      }
+    }
+  }, []);
 
   // Dates (datetime-local format: YYYY-MM-DDTHH:mm)
   const defaultStart = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 16);
@@ -156,6 +171,7 @@ export default function CreateEventPage() {
         endTimeIsoUtc: new Date(endDateTime).toISOString(),
         bannerImageUrl: bannerImageUrl.trim(),
         organizerName: organizerName.trim() || 'Addis Events Organizer',
+        organizerId: organizerSession?.organizerId,
         ticketTypes: ticketTypes.map((t) => ({
           name: t.name.trim(),
           description: t.description.trim(),
@@ -196,6 +212,42 @@ export default function CreateEventPage() {
             Event Registration Portal
           </span>
         </div>
+
+        {/* Organizer Account Status Notice */}
+        {organizerSession ? (
+          <div className="mb-6 flex items-center justify-between rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-xs sm:text-sm text-emerald-300">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="h-4 w-4 text-emerald-400 flex-shrink-0" />
+              <span>
+                Publishing as verified organizer:{' '}
+                <strong className="text-white">
+                  {organizerSession.organizationName || organizerSession.fullName}
+                </strong>
+              </span>
+            </div>
+            <Link
+              href="/organizer"
+              className="font-semibold text-amber-400 hover:text-amber-300 underline underline-offset-2 ml-2"
+            >
+              Organizer Dashboard
+            </Link>
+          </div>
+        ) : (
+          <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-xs sm:text-sm text-amber-200">
+            <div className="flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-amber-400 flex-shrink-0" />
+              <span>
+                Want to track ticket sales and receive Telebirr/Bank payouts?
+              </span>
+            </div>
+            <Link
+              href="/organizer"
+              className="font-bold text-black bg-amber-400 hover:bg-amber-300 px-3.5 py-1.5 rounded-lg transition w-fit"
+            >
+              Log in / Create Organizer Account
+            </Link>
+          </div>
+        )}
 
         {/* Header */}
         <div className="mb-8 border-b border-white/10 pb-6">
