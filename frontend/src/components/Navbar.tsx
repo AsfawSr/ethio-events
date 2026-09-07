@@ -29,22 +29,33 @@ export default function Navbar() {
           </Link>
 
           {/* Navigation Items */}
-          <nav className="flex items-center gap-2 sm:gap-4">
+          <nav className="flex items-center gap-2 sm:gap-3">
             <Link
               href="/"
-              className="hidden sm:flex items-center gap-1.5 text-sm font-medium text-slate-300 hover:text-white px-3 py-2 rounded-lg hover:bg-white/5 transition"
+              className="hidden md:flex items-center gap-1.5 text-sm font-medium text-slate-300 hover:text-white px-3 py-2 rounded-lg hover:bg-white/5 transition"
             >
               <Compass className="h-4 w-4 text-amber-400" />
-              Explore Events
+              Explore
+            </Link>
+
+            {/* Create Event Button */}
+            <Link
+              href="/events/create"
+              className="flex items-center gap-1.5 text-sm font-semibold text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 hover:border-amber-400/50 px-3 py-2 rounded-xl transition shadow-sm active:scale-95"
+            >
+              <Sparkles className="h-4 w-4 text-amber-400" />
+              <span className="hidden sm:inline">Register Event</span>
+              <span className="sm:hidden">+ Event</span>
             </Link>
 
             {/* My Tickets Button (Zero-login on-demand lookup) */}
             <button
               onClick={() => setShowMyTicketsModal(true)}
-              className="flex items-center gap-1.5 text-sm font-semibold text-slate-200 bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700 px-3.5 py-2 rounded-xl transition shadow-sm active:scale-95"
+              className="flex items-center gap-1.5 text-sm font-semibold text-slate-200 bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700 px-3 py-2 rounded-xl transition shadow-sm active:scale-95"
             >
               <Ticket className="h-4 w-4 text-amber-400" />
-              <span>My Tickets</span>
+              <span className="hidden sm:inline">My Tickets</span>
+              <span className="sm:hidden">Tickets</span>
             </button>
 
             {/* Venue Gate Check Link */}
@@ -53,8 +64,8 @@ export default function Navbar() {
               className="flex items-center gap-1.5 text-sm font-semibold text-black bg-gradient-to-r from-amber-400 via-amber-300 to-yellow-400 hover:from-amber-300 hover:to-yellow-300 px-3.5 py-2 rounded-xl transition shadow-glowGold active:scale-95"
             >
               <QrCode className="h-4 w-4 text-black" />
-              <span className="hidden sm:inline">Gate Scanner</span>
-              <span className="sm:hidden">Gate</span>
+              <span className="hidden md:inline">Gate Scanner</span>
+              <span className="md:hidden">Gate</span>
             </Link>
           </nav>
         </div>

@@ -49,4 +49,24 @@ public class EventDtos {
             int maxPerUser,
             boolean isAvailable
     ) {}
+
+    public record CreateEventRequest(
+            String title,
+            String description,
+            String venueName,
+            String venueAddress,
+            String startTimeIsoUtc,
+            String endTimeIsoUtc,
+            String bannerImageUrl,
+            String organizerName,
+            List<CreateTicketTypeRequest> ticketTypes
+    ) {}
+
+    public record CreateTicketTypeRequest(
+            String name,
+            String description,
+            BigDecimal price,
+            int totalCapacity,
+            int maxPerUser
+    ) {}
 }
