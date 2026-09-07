@@ -69,7 +69,7 @@ export default function EventDetailPage() {
           organizerName: 'Admas Events & Entertainment',
           ticketTypes: [
             {
-              id: 't1111111-1111-1111-1111-111111111111',
+              id: 'b1111111-1111-1111-1111-111111111111',
               name: 'Early Bird General',
               description: 'Standing area access with standard stage view',
               price: 800,
@@ -79,7 +79,7 @@ export default function EventDetailPage() {
               isAvailable: true,
             },
             {
-              id: 't2222222-2222-2222-2222-222222222222',
+              id: 'b2222222-2222-2222-2222-222222222222',
               name: 'VIP Front Stage',
               description: 'Front circle priority access + fast-track gate entry',
               price: 2500,
@@ -89,7 +89,7 @@ export default function EventDetailPage() {
               isAvailable: true,
             },
             {
-              id: 't3333333-3333-3333-3333-333333333333',
+              id: 'b3333333-3333-3333-3333-333333333333',
               name: 'VVIP Lounge & Drinks',
               description: 'Elevated lounge with free welcome drinks & artist backstage meetup',
               price: 6000,
