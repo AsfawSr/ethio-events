@@ -38,7 +38,7 @@ spring:
 ethioevents:
   jwt:
     secret: 404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
-    access-token-expiration-ms: 900000 # 15 minutes
+    access-token-expiration-ms: 604800000 # 7 days
     refresh-token-expiration-ms: 2592000000 # 30 days
   reservation:
     lock-duration-minutes: 10
