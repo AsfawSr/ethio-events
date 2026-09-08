@@ -176,6 +176,53 @@ export interface OrganizerSession {
   organizationName?: string;
 }
 
+export interface AdminAnalytics {
+  totalGrossRevenueEtb: number;
+  platformCommissionFeeEtb: number;
+  totalTicketsIssued: number;
+  totalOrdersCompleted: number;
+  totalOrganizers: number;
+  pendingEventsCount: number;
+  publishedEventsCount: number;
+}
+
+export interface EventModerationItem {
+  id: string;
+  title: string;
+  slug: string;
+  description: string;
+  venueName: string;
+  venueAddress: string;
+  startTime: LocalizedDateTime;
+  endTime: LocalizedDateTime;
+  bannerImageUrl: string;
+  status: string;
+  organizerId: string;
+  organizationName: string;
+  organizerPhone: string;
+  organizerEmail: string;
+  minPrice: number;
+  maxPrice: number;
+  totalCapacity: number;
+  ticketTiers: TicketType[];
+  createdAt: string;
+}
+
+export interface AdminOrganizerItem {
+  id: string;
+  organizationName: string;
+  businessLicenseNo: string;
+  bankName: string;
+  bankAccountNo: string;
+  bankAccountName: string;
+  status: string;
+  ownerName: string;
+  ownerPhone: string;
+  ownerEmail: string;
+  totalEventsCount: number;
+  createdAt: string;
+}
+
 export interface ApiResponse<T> {
   success: boolean;
   data: T;
