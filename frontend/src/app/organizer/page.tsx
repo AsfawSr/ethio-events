@@ -73,7 +73,7 @@ export default function OrganizerPortalPage() {
   useEffect(() => {
     const curSession = authStorage.getSession();
     setSession(curSession);
-    if (curSession && curSession.token) {
+    if (curSession && curSession.token && (curSession.role === 'ORGANIZER' || !!curSession.organizerId)) {
       loadDashboardData();
     } else {
       setLoading(false);
@@ -82,8 +82,10 @@ export default function OrganizerPortalPage() {
     const handleAuthChange = () => {
       const s = authStorage.getSession();
       setSession(s);
-      if (s && s.token) {
+      if (s && s.token && (s.role === 'ORGANIZER' || !!s.organizerId)) {
         loadDashboardData();
+      } else {
+        setLoading(false);
       }
     };
     window.addEventListener('ethioevents_auth_changed', handleAuthChange);
@@ -98,7 +100,7 @@ export default function OrganizerPortalPage() {
       setProfile(prof);
       setMyEvents(events);
     } catch (err: any) {
-      console.warn('Organizer session expired or invalid. Resetting session:', err);
+      console.warn('Organizer profile unavailable:', err);
       authStorage.clearSession();
       setSession(null);
       setProfile(null);
@@ -151,7 +153,20 @@ export default function OrganizerPortalPage() {
 
       authStorage.setSession(newSession);
       setSession(newSession);
-      await loadDashboardData();
+
+      // If user is not yet an organizer, prompt them to complete organization registration
+      if (res.role !== 'ORGANIZER' && !(res as any).organizerId) {
+        setRegForm((prev) => ({
+          ...prev,
+          phoneNumber: res.phoneNumber,
+          fullName: res.fullName || '',
+        }));
+        setActiveTab('register');
+        setRegError('Your phone is verified! Please complete the form below to register as an event organizer.');
+        setLoading(false);
+      } else {
+        await loadDashboardData();
+      }
     } catch (err: any) {
       setLoginError(err.message || 'Invalid verification code');
     } finally {
