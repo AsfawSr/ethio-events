@@ -72,6 +72,23 @@ export const api = {
   getOrganizerProfile: () => fetchApi<OrganizerProfile>('/organizer/me'),
   getOrganizerEvents: () => fetchApi<EventSummary[]>('/organizer/my-events'),
 
+  // Platform Admin & Event Moderation
+  getAdminAnalytics: () => fetchApi<import('./types').AdminAnalytics>('/admin/analytics'),
+  getAdminEvents: (status?: string) =>
+    fetchApi<import('./types').EventModerationItem[]>(`/admin/events${status ? `?status=${status}` : ''}`),
+  approveEvent: (id: string) =>
+    fetchApi<EventDetail>(`/admin/events/${id}/approve`, { method: 'POST' }),
+  rejectEvent: (id: string, feedback?: string) =>
+    fetchApi<EventDetail>(`/admin/events/${id}/reject`, {
+      method: 'POST',
+      body: JSON.stringify({ feedback }),
+    }),
+  getAdminOrganizers: () => fetchApi<import('./types').AdminOrganizerItem[]>('/admin/organizers'),
+  verifyOrganizer: (id: string) =>
+    fetchApi<string>(`/admin/organizers/${id}/verify`, { method: 'POST' }),
+  suspendOrganizer: (id: string) =>
+    fetchApi<string>(`/admin/organizers/${id}/suspend`, { method: 'POST' }),
+
   // Frictionless Guest Checkout (10-Minute Hold)
   reserveGuestOrder: (data: GuestReserveRequest) =>
     fetchApi<ReservationResponse>('/orders/guest-reserve', {

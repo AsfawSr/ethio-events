@@ -88,6 +88,17 @@ export default function Navbar() {
               <span className="hidden md:inline">Gate Scanner</span>
               <span className="md:hidden">Gate</span>
             </Link>
+
+            {/* Platform Admin Link */}
+            <Link
+              href="/admin"
+              className="flex items-center gap-1 text-xs font-semibold text-slate-400 hover:text-amber-400 bg-slate-900/60 hover:bg-slate-800 border border-slate-800 px-2.5 py-2 rounded-xl transition"
+              title="Platform Admin Portal"
+            >
+              <span className="text-[10px] font-bold text-amber-400 uppercase tracking-widest bg-amber-500/10 px-1 py-0.5 rounded border border-amber-500/20">
+                Admin
+              </span>
+            </Link>
           </nav>
         </div>
       </header>

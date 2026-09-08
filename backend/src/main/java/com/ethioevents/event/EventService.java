@@ -7,6 +7,7 @@ import com.ethioevents.model.EventStatus;
 import com.ethioevents.model.Organizer;
 import com.ethioevents.model.OrganizerStatus;
 import com.ethioevents.model.TicketType;
+import com.ethioevents.model.User;
 import com.ethioevents.repository.EventRepository;
 import com.ethioevents.repository.OrganizerRepository;
 import com.ethioevents.repository.TicketTypeRepository;
@@ -143,7 +144,7 @@ public class EventService {
         event.setStartTimeUtc(startTime);
         event.setEndTimeUtc(endTime);
         event.setBannerImageUrl(request.bannerImageUrl().trim());
-        event.setStatus(EventStatus.PUBLISHED);
+        event.setStatus(EventStatus.PENDING_APPROVAL);
 
         Event savedEvent = eventRepository.save(event);
 
@@ -188,5 +189,76 @@ public class EventService {
                 organizer.getOrganizationName(),
                 createdTiers
         );
+    }
+
+    @Transactional
+    public EventDtos.EventDetailDto approveEvent(UUID eventId) {
+        Event event = eventRepository.findById(eventId)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "EVENT_NOT_FOUND", "Event not found"));
+        event.setStatus(EventStatus.PUBLISHED);
+        Event saved = eventRepository.save(event);
+        return getEventBySlug(saved.getSlug());
+    }
+
+    @Transactional
+    public EventDtos.EventDetailDto rejectEvent(UUID eventId, String feedback) {
+        Event event = eventRepository.findById(eventId)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "EVENT_NOT_FOUND", "Event not found"));
+        event.setStatus(EventStatus.REJECTED);
+        Event saved = eventRepository.save(event);
+        return getEventBySlug(saved.getSlug());
+    }
+
+    public List<com.ethioevents.admin.AdminDtos.EventModerationDto> getEventsForAdmin(EventStatus statusFilter) {
+        List<Event> events;
+        if (statusFilter != null) {
+            events = eventRepository.findByStatusOrderByCreatedAtDesc(statusFilter);
+        } else {
+            events = eventRepository.findByOrderByCreatedAtDesc();
+        }
+
+        return events.stream().map(event -> {
+            List<TicketType> tiers = ticketTypeRepository.findByEventId(event.getId());
+
+            BigDecimal minPrice = tiers.stream().map(TicketType::getPrice).min(BigDecimal::compareTo).orElse(BigDecimal.ZERO);
+            BigDecimal maxPrice = tiers.stream().map(TicketType::getPrice).max(BigDecimal::compareTo).orElse(BigDecimal.ZERO);
+            int totalCapacity = tiers.stream().mapToInt(TicketType::getTotalCapacity).sum();
+
+            List<EventDtos.TicketTypeDto> tierDtos = tiers.stream().map(t -> new EventDtos.TicketTypeDto(
+                    t.getId(),
+                    t.getName(),
+                    t.getDescription(),
+                    t.getPrice(),
+                    "ETB",
+                    t.getAvailableCapacity(),
+                    t.getMaxPerUser(),
+                    t.getAvailableCapacity() > 0
+            )).collect(Collectors.toList());
+
+            Organizer org = event.getOrganizer();
+            User owner = org != null ? org.getUser() : null;
+
+            return new com.ethioevents.admin.AdminDtos.EventModerationDto(
+                    event.getId(),
+                    event.getTitle(),
+                    event.getSlug(),
+                    event.getDescription(),
+                    event.getVenueName(),
+                    event.getVenueAddress(),
+                    LocalizedDateTimeDto.fromInstant(event.getStartTimeUtc()),
+                    LocalizedDateTimeDto.fromInstant(event.getEndTimeUtc()),
+                    event.getBannerImageUrl(),
+                    event.getStatus().name(),
+                    org != null ? org.getId() : null,
+                    org != null ? org.getOrganizationName() : "Unknown",
+                    owner != null ? owner.getPhoneNumber() : "",
+                    owner != null ? owner.getEmail() : "",
+                    minPrice,
+                    maxPrice,
+                    totalCapacity,
+                    tierDtos,
+                    event.getCreatedAt()
+            );
+        }).collect(Collectors.toList());
     }
 }
