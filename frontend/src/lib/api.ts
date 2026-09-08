@@ -29,17 +29,23 @@ async function fetchApi<T>(endpoint: string, options?: RequestInit): Promise<T> 
       headers,
     });
 
-    let json: ApiResponse<T>;
+    let json: any = null;
     try {
       json = await res.json();
     } catch {
-      throw new Error(`Server returned HTTP ${res.status}: ${res.statusText || 'Internal error'}`);
+      // response body was empty or non-JSON
     }
 
-    if (!res.ok || !json.success) {
-      throw new Error(json.error?.message || `Request failed with status ${res.status}`);
+    if (!res.ok) {
+      const errMsg = json?.error?.message || json?.message || `Request failed with HTTP ${res.status}`;
+      throw new Error(errMsg);
     }
-    return json.data;
+
+    if (json && json.success === false) {
+      throw new Error(json.error?.message || 'An unexpected error occurred');
+    }
+
+    return json?.data !== undefined ? json.data : json;
   } catch (err: any) {
     console.error(`API Error on ${endpoint}:`, err);
     throw err;
