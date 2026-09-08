@@ -15,6 +15,7 @@ import com.ethioevents.repository.UserRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
@@ -24,6 +25,7 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/v1/organizer")
+@Transactional(readOnly = true)
 public class OrganizerController {
 
     private final OrganizerRepository organizerRepository;
