@@ -93,14 +93,16 @@ export default function OrganizerPortalPage() {
   const loadDashboardData = async () => {
     try {
       setLoading(true);
-      const [prof, events] = await Promise.all([
-        api.getOrganizerProfile().catch(() => null),
-        api.getOrganizerEvents().catch(() => []),
-      ]);
+      const prof = await api.getOrganizerProfile();
+      const events = await api.getOrganizerEvents().catch(() => []);
       setProfile(prof);
       setMyEvents(events);
-    } catch (err) {
-      console.error('Failed to load dashboard:', err);
+    } catch (err: any) {
+      console.warn('Organizer session expired or invalid. Resetting session:', err);
+      authStorage.clearSession();
+      setSession(null);
+      setProfile(null);
+      setMyEvents([]);
     } finally {
       setLoading(false);
     }
