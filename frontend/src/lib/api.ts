@@ -221,4 +221,38 @@ export const api = {
 
   getOrganizerSettlements: () =>
     fetchApi<import('./types').SettlementSummaryItem[]>('/organizer/settlements'),
+
+  // Media & Image Uploads
+  uploadImage: async (file: File): Promise<import('./types').FileUploadResponse> => {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const token = authStorage.getToken();
+    const headers: Record<string, string> = {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    };
+
+    const res = await fetch(`${API_BASE}/uploads/image`, {
+      method: 'POST',
+      headers,
+      body: formData,
+    });
+
+    let json: any = null;
+    try {
+      json = await res.json();
+    } catch {}
+
+    if (!res.ok) {
+      const errMsg = json?.error?.message || json?.message || `Upload failed with HTTP ${res.status}`;
+      throw new Error(errMsg);
+    }
+
+    if (json && json.success === false) {
+      throw new Error(json.error?.message || 'Upload failed');
+    }
+
+    return json?.data !== undefined ? json.data : json;
+  },
 };
+
