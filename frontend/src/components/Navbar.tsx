@@ -2,14 +2,16 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Ticket, QrCode, Sparkles, Phone, Compass, Building2 } from 'lucide-react';
+import { Ticket, QrCode, Sparkles, Phone, Compass, Building2, Languages } from 'lucide-react';
 import MyTicketsModal from './MyTicketsModal';
 import { authStorage } from '@/lib/auth';
 import { OrganizerSession } from '@/lib/types';
+import { useI18n } from '@/lib/i18n';
 
 export default function Navbar() {
   const [showMyTicketsModal, setShowMyTicketsModal] = useState(false);
   const [organizerSession, setOrganizerSession] = useState<OrganizerSession | null>(null);
+  const { t, language, setLanguage } = useI18n();
 
   useEffect(() => {
     setOrganizerSession(authStorage.getSession());
@@ -17,6 +19,10 @@ export default function Navbar() {
     window.addEventListener('ethioevents_auth_changed', handleAuth);
     return () => window.removeEventListener('ethioevents_auth_changed', handleAuth);
   }, []);
+
+  const toggleLanguage = () => {
+    setLanguage(language === 'en' ? 'am' : 'en');
+  };
 
   return (
     <>
@@ -34,18 +40,30 @@ export default function Navbar() {
                   Addis
                 </span>
               </span>
-              <span className="text-[11px] text-slate-400 -mt-0.5">የአዲስ አበባ መድረኮች</span>
+              <span className="text-[11px] text-slate-400 -mt-0.5 font-ethiopic">
+                {language === 'am' ? 'የአዲስ አበባ መድረኮች' : 'Addis Live Events'}
+              </span>
             </div>
           </Link>
 
           {/* Navigation Items */}
-          <nav className="flex items-center gap-2 sm:gap-3">
+          <nav className="flex items-center gap-2 sm:gap-2.5">
+            {/* Language Switcher Toggle */}
+            <button
+              onClick={toggleLanguage}
+              className="flex items-center gap-1.5 text-xs font-bold bg-slate-800/90 hover:bg-slate-700 text-amber-300 border border-amber-500/30 px-2.5 py-1.5 rounded-xl transition active:scale-95 shadow-sm"
+              title="Switch language between English and Amharic (ቋንቋ ቀይር)"
+            >
+              <Languages className="h-3.5 w-3.5 text-amber-400" />
+              <span>{language === 'en' ? 'አማርኛ' : 'EN'}</span>
+            </button>
+
             <Link
               href="/"
               className="hidden lg:flex items-center gap-1.5 text-sm font-medium text-slate-300 hover:text-white px-3 py-2 rounded-lg hover:bg-white/5 transition"
             >
               <Compass className="h-4 w-4 text-amber-400" />
-              Explore
+              {t.explore}
             </Link>
 
             {/* Organizer Hub / Dashboard Link */}
@@ -55,9 +73,9 @@ export default function Navbar() {
             >
               <Building2 className="h-4 w-4 text-amber-400" />
               <span className="hidden sm:inline">
-                {organizerSession?.organizationName ? organizerSession.organizationName : 'Organizer Portal'}
+                {organizerSession?.organizationName ? organizerSession.organizationName : t.organizerPortal}
               </span>
-              <span className="sm:hidden">Organizer</span>
+              <span className="sm:hidden">Host</span>
             </Link>
 
             {/* Create Event Button */}
@@ -66,7 +84,7 @@ export default function Navbar() {
               className="hidden sm:flex items-center gap-1.5 text-sm font-semibold text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 hover:border-amber-400/50 px-3 py-2 rounded-xl transition shadow-sm active:scale-95"
             >
               <Sparkles className="h-4 w-4 text-amber-400" />
-              <span>+ Event</span>
+              <span>{t.createEvent}</span>
             </Link>
 
             {/* My Tickets Button (Zero-login on-demand lookup) */}
@@ -75,7 +93,7 @@ export default function Navbar() {
               className="flex items-center gap-1.5 text-sm font-semibold text-slate-200 bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700 px-3 py-2 rounded-xl transition shadow-sm active:scale-95"
             >
               <Ticket className="h-4 w-4 text-amber-400" />
-              <span className="hidden sm:inline">My Tickets</span>
+              <span className="hidden sm:inline">{t.myTickets}</span>
               <span className="sm:hidden">Tickets</span>
             </button>
 
@@ -85,18 +103,18 @@ export default function Navbar() {
               className="flex items-center gap-1.5 text-sm font-semibold text-black bg-gradient-to-r from-amber-400 via-amber-300 to-yellow-400 hover:from-amber-300 hover:to-yellow-300 px-3.5 py-2 rounded-xl transition shadow-glowGold active:scale-95"
             >
               <QrCode className="h-4 w-4 text-black" />
-              <span className="hidden md:inline">Gate Scanner</span>
+              <span className="hidden md:inline">{t.gateScanner}</span>
               <span className="md:hidden">Gate</span>
             </Link>
 
             {/* Platform Admin Link */}
             <Link
               href="/admin"
-              className="flex items-center gap-1 text-xs font-semibold text-slate-400 hover:text-amber-400 bg-slate-900/60 hover:bg-slate-800 border border-slate-800 px-2.5 py-2 rounded-xl transition"
+              className="flex items-center gap-1 text-xs font-semibold text-slate-400 hover:text-amber-400 bg-slate-900/60 hover:bg-slate-800 border border-slate-800 px-2 py-2 rounded-xl transition"
               title="Platform Admin Portal"
             >
               <span className="text-[10px] font-bold text-amber-400 uppercase tracking-widest bg-amber-500/10 px-1 py-0.5 rounded border border-amber-500/20">
-                Admin
+                {t.admin}
               </span>
             </Link>
           </nav>

@@ -5,8 +5,10 @@ import { Sparkles, Calendar, MapPin, Search, Ticket, ShieldCheck, Zap, Smartphon
 import { EventSummary } from '@/lib/types';
 import { api } from '@/lib/api';
 import EventCard from '@/components/EventCard';
+import { useI18n } from '@/lib/i18n';
 
 export default function HomePage() {
+  const { t, language } = useI18n();
   const [events, setEvents] = useState<EventSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -132,21 +134,23 @@ export default function HomePage() {
           {/* Tag Pill */}
           <div className="inline-flex items-center gap-2 rounded-full bg-slate-800/80 border border-amber-500/30 px-4 py-1.5 text-xs font-semibold text-amber-300 backdrop-blur-md shadow-glowGold/20 animate-fadeIn">
             <Sparkles className="h-3.5 w-3.5 text-amber-400" />
-            <span>Addis Ababa’s High-Speed Event Engine • ፈጣን የቲኬት መግዣ</span>
+            <span>
+              {language === 'am'
+                ? 'የአዲስ አበባ ፈጣን የኢ-ቲኬት ስርዓት • ቴሌብር & ቻፓ'
+                : 'Addis Ababa’s High-Speed Event Engine • ፈጣን የቲኬት መግዣ'}
+            </span>
           </div>
 
           {/* Heading */}
           <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black tracking-tight text-white leading-[1.1]">
-            Experience Events in <br />
-            <span className="bg-gradient-to-r from-amber-400 via-amber-200 to-yellow-400 bg-clip-text text-transparent">
-              Addis Ababa.
+            {t.heroTitle} <br />
+            <span className="bg-gradient-to-r from-amber-400 via-amber-200 to-yellow-400 bg-clip-text text-transparent font-ethiopic">
+              {t.heroHighlight}
             </span>
           </h1>
 
           <p className="mx-auto max-w-2xl text-base sm:text-lg text-slate-300 leading-relaxed font-normal">
-            Frictionless zero-login booking for concerts, conferences, and festivals. Instant checkout with{' '}
-            <strong className="text-sky-400 font-bold">Telebirr</strong> and{' '}
-            <strong className="text-emerald-400 font-bold">Chapa</strong>, delivered as an offline-verified digital QR pass directly to your phone.
+            {t.heroSubtitle}
           </p>
 
           {/* Search & Quick Filter Bar */}
@@ -157,7 +161,7 @@ export default function HomePage() {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search Millennium Hall, concerts, summits, comedy..."
+                placeholder={t.searchPlaceholder}
                 className="w-full rounded-2xl bg-slate-900/90 border border-white/15 pl-12 pr-4 py-4 text-white text-sm sm:text-base focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/30 shadow-2xl transition placeholder:text-slate-500"
               />
             </div>
@@ -167,15 +171,15 @@ export default function HomePage() {
           <div className="pt-6 flex flex-wrap items-center justify-center gap-6 sm:gap-10 text-xs font-medium text-slate-400">
             <div className="flex items-center gap-2">
               <Zap className="h-4 w-4 text-amber-400" />
-              <span>10-Minute Atomic Hold</span>
+              <span>{language === 'am' ? 'የ10 ደቂቃ ቲኬት መጠበቂያ' : '10-Minute Atomic Hold'}</span>
             </div>
             <div className="flex items-center gap-2">
               <Smartphone className="h-4 w-4 text-sky-400" />
-              <span>1-Tap Telebirr Payment</span>
+              <span>{language === 'am' ? 'የቴሌብር ቀጥታ ክፍያ' : '1-Tap Telebirr Payment'}</span>
             </div>
             <div className="flex items-center gap-2">
               <ShieldCheck className="h-4 w-4 text-emerald-400" />
-              <span>Offline Cryptographic Gates</span>
+              <span>{language === 'am' ? 'ኦፍላይን የሚሰራ የበር መቆጣጠሪያ' : 'Offline Cryptographic Gates'}</span>
             </div>
           </div>
         </div>
@@ -185,16 +189,18 @@ export default function HomePage() {
       <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
           <div>
-            <h2 className="text-2xl sm:text-3xl font-black text-white flex items-center gap-2">
-              Upcoming Events in Addis <span className="text-amber-400">📅</span>
+            <h2 className="text-2xl sm:text-3xl font-black text-white flex items-center gap-2 font-ethiopic">
+              {language === 'am' ? 'የሚካሄዱ መድረኮች' : 'Upcoming Events in Addis'} <span className="text-amber-400">📅</span>
             </h2>
             <p className="text-sm text-slate-400 mt-0.5">
-              Dates displayed in both Ethiopian Ge'ez (12-hour cycle) &amp; Gregorian Time
+              {language === 'am'
+                ? 'በኢትዮጵያ ዘመን አቆጣጠር (12 የሰዓት ዑደት) እና በፈረንጆች ቀን'
+                : 'Dates displayed in both Ethiopian Ge\'ez (12-hour cycle) & Gregorian Time'}
             </p>
           </div>
 
           <div className="text-xs text-slate-400 bg-slate-900 px-3 py-1.5 rounded-xl border border-white/10 self-start sm:self-auto font-medium">
-            Showing <strong className="text-white font-bold">{filteredEvents.length}</strong> live events
+            {language === 'am' ? 'የተገኙ መድረኮች:' : 'Showing'} <strong className="text-white font-bold">{filteredEvents.length}</strong> {language === 'am' ? 'መድረኮች' : 'live events'}
           </div>
         </div>
 
@@ -214,8 +220,12 @@ export default function HomePage() {
         ) : (
           <div className="text-center py-16 rounded-3xl bg-slate-900/40 border border-white/5 space-y-3">
             <Ticket className="mx-auto h-12 w-12 text-slate-600" />
-            <p className="text-base font-semibold text-white">No events found</p>
-            <p className="text-xs text-slate-400">Try adjusting your search terms</p>
+            <p className="text-base font-semibold text-white">
+              {language === 'am' ? 'ምንም መድረክ አልተገኘም' : 'No events found'}
+            </p>
+            <p className="text-xs text-slate-400">
+              {language === 'am' ? 'የፍለጋ ቃላትን ቀይረው ይሞክሩ' : 'Try adjusting your search terms'}
+            </p>
           </div>
         )}
       </section>

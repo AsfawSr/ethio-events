@@ -1,13 +1,18 @@
+'use client';
+
 import React from 'react';
 import Link from 'next/link';
 import { MapPin, Calendar, Ticket, ArrowUpRight } from 'lucide-react';
 import { EventSummary } from '@/lib/types';
+import { useI18n } from '@/lib/i18n';
 
 interface EventCardProps {
   event: EventSummary;
 }
 
 export default function EventCard({ event }: EventCardProps) {
+  const { t, language } = useI18n();
+
   return (
     <Link
       href={`/events/${event.slug}`}
@@ -35,12 +40,12 @@ export default function EventCard({ event }: EventCardProps) {
         {/* Sold Out / Status Pill */}
         {event.isSoldOut ? (
           <div className="absolute top-3 right-3 bg-rose-600 text-white font-black text-xs px-2.5 py-1 rounded-full uppercase tracking-wider shadow">
-            Sold Out
+            {language === 'am' ? 'ያለቀ' : 'Sold Out'}
           </div>
         ) : (
           <div className="absolute top-3 right-3 bg-emerald-600/90 backdrop-blur-md text-white font-bold text-xs px-2.5 py-1 rounded-full flex items-center gap-1 shadow">
             <span className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
-            Selling Fast
+            {language === 'am' ? 'በሽያጭ ላይ' : 'Selling Fast'}
           </div>
         )}
       </div>
@@ -66,7 +71,9 @@ export default function EventCard({ event }: EventCardProps) {
         {/* Footer info: Price & CTA */}
         <div className="pt-3 border-t border-white/10 flex items-center justify-between">
           <div>
-            <span className="text-[10px] uppercase font-bold text-slate-400 block -mb-0.5">Tickets from</span>
+            <span className="text-[10px] uppercase font-bold text-slate-400 block -mb-0.5">
+              {t.fromPrice}
+            </span>
             <span className="text-base font-extrabold text-amber-400">
               {event.minPrice > 0 ? (
                 <>
@@ -79,7 +86,7 @@ export default function EventCard({ event }: EventCardProps) {
           </div>
 
           <div className="flex items-center gap-1 text-xs font-bold text-black bg-gradient-to-r from-amber-400 to-yellow-400 group-hover:from-amber-300 group-hover:to-yellow-300 px-3.5 py-2 rounded-xl transition shadow-glowGold/30">
-            <span>Get Tickets</span>
+            <span>{t.getTickets}</span>
             <ArrowUpRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
           </div>
         </div>
