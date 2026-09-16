@@ -36,6 +36,7 @@ public class OrderService {
     private final TransactionRepository transactionRepository;
     private final TicketReservationService ticketReservationService;
     private final TicketService ticketService;
+    private final com.ethioevents.promo.PromoService promoService;
 
     public OrderService(OrderRepository orderRepository,
                         OrderItemRepository orderItemRepository,
@@ -44,7 +45,8 @@ public class OrderService {
                         TicketRepository ticketRepository,
                         TransactionRepository transactionRepository,
                         TicketReservationService ticketReservationService,
-                        TicketService ticketService) {
+                        TicketService ticketService,
+                        com.ethioevents.promo.PromoService promoService) {
         this.orderRepository = orderRepository;
         this.orderItemRepository = orderItemRepository;
         this.userRepository = userRepository;
@@ -53,6 +55,7 @@ public class OrderService {
         this.transactionRepository = transactionRepository;
         this.ticketReservationService = ticketReservationService;
         this.ticketService = ticketService;
+        this.promoService = promoService;
     }
 
     /**
@@ -75,7 +78,26 @@ public class OrderService {
         TicketType ticketType = ticketReservationService.holdTicketCapacity(request.ticketTypeId(), request.quantity());
 
         // 3. Calculate totals & lock duration
-        BigDecimal totalAmount = ticketType.getPrice().multiply(BigDecimal.valueOf(request.quantity()));
+        BigDecimal rawSubtotal = ticketType.getPrice().multiply(BigDecimal.valueOf(request.quantity()));
+        BigDecimal totalAmount = rawSubtotal;
+
+        // 3b. Apply promo code discount if provided
+        if (request.promoCode() != null && !request.promoCode().isBlank()) {
+            com.ethioevents.promo.PromoDtos.ValidatePromoResponse promoRes =
+                    promoService.validatePromoCode(new com.ethioevents.promo.PromoDtos.ValidatePromoRequest(
+                            ticketType.getEvent().getId(),
+                            request.promoCode(),
+                            rawSubtotal,
+                            request.quantity()
+                    ));
+            if (promoRes.valid()) {
+                totalAmount = promoRes.finalTotal();
+                promoService.incrementTimesUsed(request.promoCode());
+                log.info("Applied promo code {} to order: Discount {} ETB, Net Total {} ETB",
+                        request.promoCode(), promoRes.discountAmount(), totalAmount);
+            }
+        }
+
         Instant reservedUntil = Instant.now().plus(Duration.ofMinutes(10));
         String orderNumber = "ORD-" + System.currentTimeMillis() % 1000000 + "-" + (1000 + random.nextInt(9000));
 

@@ -284,5 +284,24 @@ export const api = {
 
     return json?.data !== undefined ? json.data : json;
   },
+
+  // Promo Codes & Discounts
+  validatePromoCode: (data: { eventId?: string; code: string; subtotal: number; ticketCount: number }) =>
+    fetchApi<import('./types').ValidatePromoResponse>('/promo/validate', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  createPromoCode: (data: any) =>
+    fetchApi<import('./types').PromoCodeItem>('/promo', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  getEventPromoCodes: (eventId: string) =>
+    fetchApi<import('./types').PromoCodeItem[]>(`/promo/event/${eventId}`),
+
+  getAllPromoCodes: () =>
+    fetchApi<import('./types').PromoCodeItem[]>('/promo'),
 };
 
