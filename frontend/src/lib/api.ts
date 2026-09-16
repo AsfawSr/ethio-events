@@ -106,6 +106,30 @@ export const api = {
   getPublicTicketByHash: (securityHash: string) =>
     fetchApi<PublicTicketDetails>(`/tickets/public/pass/${securityHash}`),
 
+  getTicketPdfUrl: (securityHash: string) =>
+    `${API_BASE}/tickets/public/pass/${securityHash}/pdf`,
+
+  downloadTicketPdf: async (securityHash: string, ticketCode: string) => {
+    const url = `${API_BASE}/tickets/public/pass/${securityHash}/pdf`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('Failed to generate PDF ticket pass');
+    const blob = await res.blob();
+    const blobUrl = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = blobUrl;
+    a.download = `EthioEvents-Ticket-${ticketCode}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(blobUrl);
+  },
+
+  getAppleWalletPass: (securityHash: string) =>
+    fetchApi<Record<string, any>>(`/tickets/public/pass/${securityHash}/wallet/apple`),
+
+  getGoogleWalletPass: (securityHash: string) =>
+    fetchApi<Record<string, any>>(`/tickets/public/pass/${securityHash}/wallet/google`),
+
   // Payment Initiation
   initiateTelebirr: (orderNumber: string) =>
     fetchApi<{ toPayUrl: string; outTradeNo: string; transactionRef: string }>(

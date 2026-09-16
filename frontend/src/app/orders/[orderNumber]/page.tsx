@@ -14,6 +14,10 @@ import {
   Download,
   AlertCircle,
   Sparkles,
+  Printer,
+  Loader2,
+  Check,
+  ExternalLink,
 } from 'lucide-react';
 import { OrderDetails } from '@/lib/types';
 import { api } from '@/lib/api';
@@ -25,7 +29,8 @@ export default function OrderStatusPage() {
 
   const [order, setOrder] = useState<OrderDetails | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [downloadingCode, setDownloadingCode] = useState<string | null>(null);
+  const [downloadingAll, setDownloadingAll] = useState(false);
 
   useEffect(() => {
     async function loadOrder() {
@@ -86,6 +91,33 @@ export default function OrderStatusPage() {
     loadOrder();
   }, [orderNumber]);
 
+  const handleDownloadSinglePdf = async (securityHash: string, ticketCode: string) => {
+    setDownloadingCode(ticketCode);
+    try {
+      await api.downloadTicketPdf(securityHash, ticketCode);
+    } catch {
+      window.open(api.getTicketPdfUrl(securityHash), '_blank');
+    } finally {
+      setDownloadingCode(null);
+    }
+  };
+
+  const handleDownloadAllPdfs = async () => {
+    if (!order || !order.tickets.length) return;
+    setDownloadingAll(true);
+    try {
+      for (const t of order.tickets) {
+        if (t.securityHash) {
+          await api.downloadTicketPdf(t.securityHash, t.ticketCode);
+        }
+      }
+    } catch {
+      // ignore
+    } finally {
+      setDownloadingAll(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="mx-auto max-w-3xl py-24 px-4 text-center">
@@ -138,9 +170,12 @@ export default function OrderStatusPage() {
             : 'Please complete your Telebirr / Chapa payment before the reservation expires.'}
         </p>
 
-        <div className="pt-2">
+        <div className="pt-2 flex items-center justify-center gap-2">
           <span className="font-mono text-xs font-bold text-slate-300 bg-black/40 border border-white/10 px-3 py-1 rounded-full">
             Order #{order.orderNumber}
+          </span>
+          <span className="text-xs font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-3 py-1 rounded-full">
+            Status: {order.status}
           </span>
         </div>
       </div>
@@ -169,10 +204,23 @@ export default function OrderStatusPage() {
       {/* Issued Ticket Passes */}
       {isPaid && order.tickets.length > 0 && (
         <div className="space-y-4">
-          <h3 className="text-lg font-bold text-white flex items-center gap-2">
-            <QrCode className="h-5 w-5 text-amber-400" />
-            <span>Digital Passes ({order.tickets.length})</span>
-          </h3>
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-bold text-white flex items-center gap-2">
+              <QrCode className="h-5 w-5 text-amber-400" />
+              <span>Digital Passes ({order.tickets.length})</span>
+            </h3>
+
+            {order.tickets.length > 1 && (
+              <button
+                onClick={handleDownloadAllPdfs}
+                disabled={downloadingAll}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 px-3 py-1.5 text-xs font-semibold text-amber-400 transition"
+              >
+                {downloadingAll ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+                <span>Download All PDFs</span>
+              </button>
+            )}
+          </div>
 
           <div className="space-y-3">
             {order.tickets.map((t, idx) => (
@@ -195,14 +243,30 @@ export default function OrderStatusPage() {
                   <p className="text-xs text-slate-400">Attendee: {t.attendeeName}</p>
                 </div>
 
-                <Link
-                  href={`/t/${t.securityHash}`}
-                  className="flex items-center justify-center gap-2 bg-gradient-to-r from-amber-400 to-yellow-400 hover:from-amber-300 hover:to-yellow-300 text-black font-extrabold px-5 py-3 rounded-xl text-xs shadow-glowGold active:scale-95 transition"
-                >
-                  <QrCode className="h-4 w-4 text-black" />
-                  <span>Open Gate Pass</span>
-                  <ArrowRight className="h-3.5 w-3.5 text-black" />
-                </Link>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => handleDownloadSinglePdf(t.securityHash, t.ticketCode)}
+                    disabled={downloadingCode === t.ticketCode}
+                    className="inline-flex items-center justify-center gap-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-semibold px-3 py-2.5 rounded-xl text-xs active:scale-95 transition"
+                    title="Download PDF"
+                  >
+                    {downloadingCode === t.ticketCode ? (
+                      <Loader2 className="h-4 w-4 animate-spin text-amber-400" />
+                    ) : (
+                      <Download className="h-4 w-4 text-amber-400" />
+                    )}
+                    <span className="hidden sm:inline">PDF</span>
+                  </button>
+
+                  <Link
+                    href={`/t/${t.securityHash}`}
+                    className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-gradient-to-r from-amber-400 to-yellow-400 hover:from-amber-300 hover:to-yellow-300 text-black font-extrabold px-4 py-2.5 rounded-xl text-xs shadow-glowGold active:scale-95 transition"
+                  >
+                    <QrCode className="h-4 w-4 text-black" />
+                    <span>Open Live Pass</span>
+                    <ArrowRight className="h-3.5 w-3.5 text-black" />
+                  </Link>
+                </div>
               </div>
             ))}
           </div>

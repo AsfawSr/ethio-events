@@ -106,10 +106,13 @@ public class TicketService {
         return generatedTickets;
     }
 
-    public PublicTicketDetailsDto getPublicTicketBySecurityHash(String securityHash) {
-        Ticket ticket = ticketRepository.findBySecurityHash(securityHash)
+    public Ticket getTicketBySecurityHash(String securityHash) {
+        return ticketRepository.findBySecurityHash(securityHash)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "TICKET_NOT_FOUND", "Ticket pass not found or invalid link"));
+    }
 
+    public PublicTicketDetailsDto getPublicTicketBySecurityHash(String securityHash) {
+        Ticket ticket = getTicketBySecurityHash(securityHash);
         return mapToPublicDto(ticket);
     }
 

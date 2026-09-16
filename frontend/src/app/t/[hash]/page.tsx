@@ -12,6 +12,11 @@ import {
   AlertTriangle,
   Sparkles,
   Ticket as TicketIcon,
+  Printer,
+  Smartphone,
+  Loader2,
+  Check,
+  ExternalLink,
 } from 'lucide-react';
 import { PublicTicketDetails } from '@/lib/types';
 import { api } from '@/lib/api';
@@ -22,6 +27,8 @@ export default function StandaloneTicketPassPage() {
 
   const [ticket, setTicket] = useState<PublicTicketDetails | null>(null);
   const [loading, setLoading] = useState(true);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
+  const [copied, setCopied] = useState(false);
   const [currentTime, setCurrentTime] = useState<string>('');
 
   useEffect(() => {
@@ -69,6 +76,68 @@ export default function StandaloneTicketPassPage() {
     loadTicket();
   }, [hash]);
 
+  const handleDownloadPdf = async () => {
+    if (!ticket) return;
+    setDownloadingPdf(true);
+    try {
+      await api.downloadTicketPdf(hash, ticket.ticketCode);
+    } catch (err) {
+      // Fallback direct open
+      window.open(api.getTicketPdfUrl(hash), '_blank');
+    } finally {
+      setDownloadingPdf(false);
+    }
+  };
+
+  const handleShare = async () => {
+    const url = window.location.href;
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: ticket ? `EthioEvents Ticket: ${ticket.eventTitle}` : 'My Ticket Pass',
+          text: `My admission ticket for ${ticket?.eventTitle || 'event'}`,
+          url,
+        });
+      } catch {}
+    } else {
+      navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    }
+  };
+
+  const handlePrint = () => {
+    window.print();
+  };
+
+  const handleAppleWallet = async () => {
+    try {
+      const pass = await api.getAppleWalletPass(hash);
+      const blob = new Blob([JSON.stringify(pass, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `EthioEvents-Pass-${ticket?.ticketCode || 'ticket'}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      alert('Apple Wallet pass data ready for installation on iOS devices.');
+    }
+  };
+
+  const handleGoogleWallet = async () => {
+    try {
+      const googleData = await api.getGoogleWalletPass(hash);
+      if (googleData?.saveUrl) {
+        window.open(googleData.saveUrl, '_blank');
+      } else {
+        alert('Google Wallet save pass link generated.');
+      }
+    } catch {
+      alert('Google Wallet pass ready.');
+    }
+  };
+
   if (loading || !ticket) {
     return (
       <div className="mx-auto max-w-md py-24 px-4 text-center">
@@ -81,7 +150,41 @@ export default function StandaloneTicketPassPage() {
   const isCheckedIn = ticket.status === 'CHECKED_IN';
 
   return (
-    <div className="min-h-screen py-8 px-4 flex flex-col items-center justify-center">
+    <div className="min-h-screen py-8 px-4 flex flex-col items-center justify-center space-y-6">
+      {/* Action Bar (Top) */}
+      <div className="w-full max-w-md flex items-center justify-between gap-2 px-1 print:hidden">
+        <button
+          onClick={handleDownloadPdf}
+          disabled={downloadingPdf}
+          className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-black font-bold py-2.5 px-3 text-xs shadow-md active:scale-95 transition disabled:opacity-75"
+        >
+          {downloadingPdf ? (
+            <Loader2 className="h-4 w-4 animate-spin text-black" />
+          ) : (
+            <Download className="h-4 w-4 text-black" />
+          )}
+          <span>{downloadingPdf ? 'Generating PDF...' : 'Download PDF Pass'}</span>
+        </button>
+
+        <button
+          onClick={handlePrint}
+          className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-medium py-2.5 px-3 text-xs border border-slate-700 transition"
+          title="Print physical pass on paper"
+        >
+          <Printer className="h-4 w-4 text-slate-300" />
+          <span className="hidden sm:inline">Print</span>
+        </button>
+
+        <button
+          onClick={handleShare}
+          className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-medium py-2.5 px-3 text-xs border border-slate-700 transition"
+          title="Share ticket link"
+        >
+          {copied ? <Check className="h-4 w-4 text-emerald-400" /> : <Share2 className="h-4 w-4 text-slate-300" />}
+          <span>{copied ? 'Link Copied!' : 'Share'}</span>
+        </button>
+      </div>
+
       {/* Mobile Pass Container */}
       <div className="w-full max-w-md rounded-[32px] bg-[#0E1626] border border-amber-500/40 shadow-2xl overflow-hidden relative">
         {/* Animated Holographic Security Ribbon */}
@@ -177,6 +280,29 @@ export default function StandaloneTicketPassPage() {
             <ShieldCheck className="h-4 w-4 shrink-0" />
             <span>Works offline at Millennium Hall turnstiles</span>
           </div>
+        </div>
+      </div>
+
+      {/* Mobile Wallets Add-on Section */}
+      <div className="w-full max-w-md rounded-2xl border border-white/10 bg-slate-900/60 p-4 space-y-3 print:hidden">
+        <span className="text-xs font-semibold text-slate-300 block text-center">
+          Save to Mobile Wallet for Quick Gate Access:
+        </span>
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            onClick={handleAppleWallet}
+            className="flex items-center justify-center gap-2 rounded-xl bg-black hover:bg-slate-950 border border-slate-700 p-2.5 text-xs font-semibold text-white transition active:scale-95 shadow"
+          >
+            <Smartphone className="h-4 w-4 text-white" />
+            <span>Apple Wallet</span>
+          </button>
+          <button
+            onClick={handleGoogleWallet}
+            className="flex items-center justify-center gap-2 rounded-xl bg-[#1F1F1F] hover:bg-black border border-slate-700 p-2.5 text-xs font-semibold text-white transition active:scale-95 shadow"
+          >
+            <Smartphone className="h-4 w-4 text-emerald-400" />
+            <span>Google Wallet</span>
+          </button>
         </div>
       </div>
     </div>

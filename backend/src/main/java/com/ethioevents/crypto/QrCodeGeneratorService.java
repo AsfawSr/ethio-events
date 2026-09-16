@@ -16,7 +16,7 @@ import java.util.Map;
 @Service
 public class QrCodeGeneratorService {
 
-    public String generateQrCodeBase64(String content, int width, int height) {
+    public byte[] generateQrCodeBytes(String content, int width, int height) {
         try {
             QRCodeWriter qrCodeWriter = new QRCodeWriter();
             Map<EncodeHintType, Object> hints = new HashMap<>();
@@ -27,11 +27,14 @@ public class QrCodeGeneratorService {
             BitMatrix bitMatrix = qrCodeWriter.encode(content, BarcodeFormat.QR_CODE, width, height, hints);
             ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
             MatrixToImageWriter.writeToStream(bitMatrix, "PNG", outputStream);
-
-            byte[] imageBytes = outputStream.toByteArray();
-            return "data:image/png;base64," + Base64.getEncoder().encodeToString(imageBytes);
+            return outputStream.toByteArray();
         } catch (Exception e) {
             throw new RuntimeException("Failed to generate QR Code", e);
         }
+    }
+
+    public String generateQrCodeBase64(String content, int width, int height) {
+        byte[] imageBytes = generateQrCodeBytes(content, width, height);
+        return "data:image/png;base64," + Base64.getEncoder().encodeToString(imageBytes);
     }
 }
