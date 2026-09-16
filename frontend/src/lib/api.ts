@@ -213,6 +213,12 @@ export const api = {
       body: JSON.stringify({ eventId, checkIns }),
     }),
 
+  getGateLiveStats: (eventId: string) =>
+    fetchApi<import('./types').GateLiveStats>(`/gate/live-stats/${eventId}`),
+
+  getGateLiveStreamUrl: (eventId: string) =>
+    `${API_BASE}/gate/live-stream/${eventId}`,
+
   // Admin SMS & Notifications Monitoring
   getAdminSmsLogs: (phone?: string) =>
     fetchApi<import('./types').SmsLogItem[]>(`/admin/sms/logs${phone ? `?phone=${encodeURIComponent(phone)}` : ''}`),

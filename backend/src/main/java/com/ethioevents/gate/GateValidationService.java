@@ -28,13 +28,16 @@ public class GateValidationService {
     private final EventRepository eventRepository;
     private final TicketRepository ticketRepository;
     private final Ed25519TicketSigner ticketSigner;
+    private final GateLiveStreamService gateLiveStreamService;
 
     public GateValidationService(EventRepository eventRepository,
                                  TicketRepository ticketRepository,
-                                 Ed25519TicketSigner ticketSigner) {
+                                 Ed25519TicketSigner ticketSigner,
+                                 GateLiveStreamService gateLiveStreamService) {
         this.eventRepository = eventRepository;
         this.ticketRepository = ticketRepository;
         this.ticketSigner = ticketSigner;
+        this.gateLiveStreamService = gateLiveStreamService;
     }
 
     public GateDtos.GateManifestDto getEventManifest(UUID eventId, Instant since) {
@@ -109,6 +112,23 @@ public class GateValidationService {
         ticket.setCheckedInAtUtc(Instant.now());
         Ticket saved = ticketRepository.save(ticket);
 
+        // Calculate updated stats & broadcast live event
+        long checkedInCount = ticketRepository.countByEventIdAndStatus(request.eventId(), TicketStatus.CHECKED_IN);
+        long totalCapacity = ticketRepository.countByEventId(request.eventId());
+
+        GateDtos.CheckInLiveEvent liveEvent = new GateDtos.CheckInLiveEvent(
+                request.eventId(),
+                saved.getTicketCode(),
+                saved.getTicketType().getName(),
+                saved.getAttendeeName(),
+                "CHECKED_IN",
+                saved.getCheckedInAtUtc(),
+                checkedInCount,
+                totalCapacity,
+                "Online Turnstile Scanner"
+        );
+        gateLiveStreamService.broadcastCheckIn(request.eventId(), liveEvent);
+
         return new GateDtos.ValidateResultDto(
                 "SUCCESS",
                 "Access Granted - Welcome!",
@@ -138,8 +158,25 @@ public class GateValidationService {
                 } else {
                     ticket.setStatus(TicketStatus.CHECKED_IN);
                     ticket.setCheckedInAtUtc(record.checkedInAt() != null ? record.checkedInAt() : Instant.now());
-                    ticketRepository.save(ticket);
+                    Ticket saved = ticketRepository.save(ticket);
                     successCount++;
+
+                    // Broadcast check-in
+                    long checkedInCount = ticketRepository.countByEventIdAndStatus(request.eventId(), TicketStatus.CHECKED_IN);
+                    long totalCapacity = ticketRepository.countByEventId(request.eventId());
+
+                    GateDtos.CheckInLiveEvent liveEvent = new GateDtos.CheckInLiveEvent(
+                            request.eventId(),
+                            saved.getTicketCode(),
+                            saved.getTicketType().getName(),
+                            saved.getAttendeeName(),
+                            "CHECKED_IN",
+                            saved.getCheckedInAtUtc(),
+                            checkedInCount,
+                            totalCapacity,
+                            "Offline Batch Sync"
+                    );
+                    gateLiveStreamService.broadcastCheckIn(request.eventId(), liveEvent);
                 }
             } else {
                 conflictCount++;
@@ -148,5 +185,25 @@ public class GateValidationService {
         }
 
         return new GateDtos.BatchSyncResponse(request.checkIns().size(), successCount, conflictCount, conflicts);
+    }
+
+    public GateDtos.GateLiveStatsDto getLiveStats(UUID eventId) {
+        Event event = eventRepository.findById(eventId)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "EVENT_NOT_FOUND", "Event not found"));
+
+        long totalTickets = ticketRepository.countByEventId(eventId);
+        long checkedInCount = ticketRepository.countByEventIdAndStatus(eventId, TicketStatus.CHECKED_IN);
+        double occupancy = totalTickets > 0 ? ((double) checkedInCount / totalTickets) * 100.0 : 0.0;
+
+        List<GateDtos.CheckInLiveEvent> recent = gateLiveStreamService.getRecentCheckIns(eventId);
+
+        return new GateDtos.GateLiveStatsDto(
+                event.getId(),
+                event.getTitle(),
+                totalTickets,
+                checkedInCount,
+                Math.round(occupancy * 10.0) / 10.0,
+                recent
+        );
     }
 }
