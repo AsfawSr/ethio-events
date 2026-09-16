@@ -223,6 +223,54 @@ export interface AdminOrganizerItem {
   createdAt: string;
 }
 
+export interface SmsLogItem {
+  id: string;
+  phoneNumber: string;
+  messageType: 'OTP' | 'TICKET_CONFIRMATION' | 'EVENT_UPDATE' | string;
+  provider: 'MOCK' | 'ETHIO_TELECOM' | 'AFRICASTALKING' | 'TWILIO' | string;
+  status: 'SENT' | 'FAILED' | 'DELIVERED' | string;
+  content: string;
+  externalMessageId?: string;
+  errorMessage?: string;
+  createdAt: string;
+}
+
+export interface SettlementSummaryItem {
+  id: string;
+  eventId: string;
+  eventTitle: string;
+  eventSlug: string;
+  organizerId: string;
+  organizationName: string;
+  organizerPhone: string;
+  totalGrossRevenue: number;
+  platformCommissionFee: number;
+  payoutAmount: number;
+  bankName: string;
+  bankAccountNo: string;
+  status: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'REJECTED' | string;
+  payoutReference?: string;
+  processedAt?: string;
+  createdAt: string;
+}
+
+export interface SettlementCalculation {
+  eventId: string;
+  eventTitle: string;
+  organizerId: string;
+  organizationName: string;
+  bankName: string;
+  bankAccountNo: string;
+  totalGrossRevenue: number;
+  commissionRatePercent: number;
+  platformCommissionFee: number;
+  payoutAmount: number;
+  totalPaidOrders: number;
+  totalTicketsSold: number;
+  alreadySettled: boolean;
+  existingSettlementId?: string;
+}
+
 export interface ApiResponse<T> {
   success: boolean;
   data: T;

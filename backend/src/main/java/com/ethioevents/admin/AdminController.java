@@ -1,11 +1,14 @@
 package com.ethioevents.admin;
 
+import com.ethioevents.auth.SmsGatewayDispatcher;
 import com.ethioevents.common.ApiException;
 import com.ethioevents.common.ApiResponse;
 import com.ethioevents.event.EventDtos;
 import com.ethioevents.event.EventService;
 import com.ethioevents.model.*;
 import com.ethioevents.repository.*;
+import com.ethioevents.settlement.SettlementDtos;
+import com.ethioevents.settlement.SettlementService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,17 +30,26 @@ public class AdminController {
     private final OrganizerRepository organizerRepository;
     private final OrderRepository orderRepository;
     private final TicketRepository ticketRepository;
+    private final SmsLogRepository smsLogRepository;
+    private final SmsGatewayDispatcher smsGatewayDispatcher;
+    private final SettlementService settlementService;
 
     public AdminController(EventService eventService,
                            EventRepository eventRepository,
                            OrganizerRepository organizerRepository,
                            OrderRepository orderRepository,
-                           TicketRepository ticketRepository) {
+                           TicketRepository ticketRepository,
+                           SmsLogRepository smsLogRepository,
+                           SmsGatewayDispatcher smsGatewayDispatcher,
+                           SettlementService settlementService) {
         this.eventService = eventService;
         this.eventRepository = eventRepository;
         this.organizerRepository = organizerRepository;
         this.orderRepository = orderRepository;
         this.ticketRepository = ticketRepository;
+        this.smsLogRepository = smsLogRepository;
+        this.smsGatewayDispatcher = smsGatewayDispatcher;
+        this.settlementService = settlementService;
     }
 
     @GetMapping("/analytics")
@@ -149,5 +161,88 @@ public class AdminController {
         organizer.setStatus(OrganizerStatus.SUSPENDED);
         organizerRepository.save(organizer);
         return ResponseEntity.ok(ApiResponse.ok("Organizer suspended"));
+    }
+
+    @GetMapping("/sms/logs")
+    public ResponseEntity<ApiResponse<List<AdminDtos.SmsLogDto>>> getSmsLogs(
+            @RequestParam(required = false) String phone) {
+        List<SmsLog> logs;
+        if (phone != null && !phone.isBlank()) {
+            logs = smsLogRepository.findByPhoneNumberOrderByCreatedAtDesc(phone.trim());
+        } else {
+            logs = smsLogRepository.findTop50ByOrderByCreatedAtDesc();
+        }
+
+        List<AdminDtos.SmsLogDto> dtos = logs.stream().map(l -> new AdminDtos.SmsLogDto(
+                l.getId(),
+                l.getPhoneNumber(),
+                l.getMessageType(),
+                l.getProvider(),
+                l.getStatus(),
+                l.getContent(),
+                l.getExternalMessageId(),
+                l.getErrorMessage(),
+                l.getCreatedAt()
+        )).collect(Collectors.toList());
+
+        return ResponseEntity.ok(ApiResponse.ok(dtos));
+    }
+
+    @PostMapping("/sms/retry/{id}")
+    @Transactional
+    public ResponseEntity<ApiResponse<AdminDtos.SmsLogDto>> retrySms(@PathVariable UUID id) {
+        SmsLog logEntry = smsLogRepository.findById(id)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "SMS_LOG_NOT_FOUND", "SMS Log entry not found"));
+
+        SmsLog newEntry = smsGatewayDispatcher.dispatch(
+                logEntry.getPhoneNumber(),
+                logEntry.getMessageType(),
+                logEntry.getContent()
+        );
+
+        AdminDtos.SmsLogDto dto = new AdminDtos.SmsLogDto(
+                newEntry.getId(),
+                newEntry.getPhoneNumber(),
+                newEntry.getMessageType(),
+                newEntry.getProvider(),
+                newEntry.getStatus(),
+                newEntry.getContent(),
+                newEntry.getExternalMessageId(),
+                newEntry.getErrorMessage(),
+                newEntry.getCreatedAt()
+        );
+
+        return ResponseEntity.ok(ApiResponse.ok(dto));
+    }
+
+    // Settlements & Financial Payout Operations
+    @GetMapping("/settlements")
+    public ResponseEntity<ApiResponse<List<SettlementDtos.SettlementSummaryDto>>> getSettlements() {
+        List<SettlementDtos.SettlementSummaryDto> settlements = settlementService.getAllSettlements();
+        return ResponseEntity.ok(ApiResponse.ok(settlements));
+    }
+
+    @GetMapping("/settlements/calculate/{eventId}")
+    public ResponseEntity<ApiResponse<SettlementDtos.CalculateSettlementResponse>> calculateSettlement(
+            @PathVariable UUID eventId) {
+        SettlementDtos.CalculateSettlementResponse calc = settlementService.calculateSettlement(eventId);
+        return ResponseEntity.ok(ApiResponse.ok(calc));
+    }
+
+    @PostMapping("/settlements/generate/{eventId}")
+    @Transactional
+    public ResponseEntity<ApiResponse<SettlementDtos.SettlementSummaryDto>> generateSettlement(
+            @PathVariable UUID eventId) {
+        SettlementDtos.SettlementSummaryDto dto = settlementService.generateSettlement(eventId);
+        return ResponseEntity.ok(ApiResponse.ok(dto));
+    }
+
+    @PostMapping("/settlements/{id}/process-payout")
+    @Transactional
+    public ResponseEntity<ApiResponse<SettlementDtos.SettlementSummaryDto>> processPayout(
+            @PathVariable UUID id,
+            @RequestBody(required = false) SettlementDtos.ProcessPayoutRequest request) {
+        SettlementDtos.SettlementSummaryDto dto = settlementService.processPayout(id, request);
+        return ResponseEntity.ok(ApiResponse.ok(dto));
     }
 }

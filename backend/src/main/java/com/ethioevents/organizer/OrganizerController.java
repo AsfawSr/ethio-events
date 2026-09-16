@@ -12,6 +12,8 @@ import com.ethioevents.repository.OrganizerRepository;
 import com.ethioevents.repository.TicketRepository;
 import com.ethioevents.repository.TicketTypeRepository;
 import com.ethioevents.repository.UserRepository;
+import com.ethioevents.settlement.SettlementDtos;
+import com.ethioevents.settlement.SettlementService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -34,8 +36,8 @@ public class OrganizerController {
     private final OrderRepository orderRepository;
     private final TicketRepository ticketRepository;
     private final EventService eventService;
-
     private final TicketTypeRepository ticketTypeRepository;
+    private final SettlementService settlementService;
 
     public OrganizerController(OrganizerRepository organizerRepository,
                                UserRepository userRepository,
@@ -43,7 +45,8 @@ public class OrganizerController {
                                OrderRepository orderRepository,
                                TicketRepository ticketRepository,
                                TicketTypeRepository ticketTypeRepository,
-                               EventService eventService) {
+                               EventService eventService,
+                               SettlementService settlementService) {
         this.organizerRepository = organizerRepository;
         this.userRepository = userRepository;
         this.eventRepository = eventRepository;
@@ -51,6 +54,7 @@ public class OrganizerController {
         this.ticketRepository = ticketRepository;
         this.ticketTypeRepository = ticketTypeRepository;
         this.eventService = eventService;
+        this.settlementService = settlementService;
     }
 
     private Organizer getAuthenticatedOrganizer(Authentication authentication) {
@@ -132,5 +136,12 @@ public class OrganizerController {
         }).collect(Collectors.toList());
 
         return ResponseEntity.ok(ApiResponse.ok(summaries));
+    }
+
+    @GetMapping("/settlements")
+    public ResponseEntity<ApiResponse<List<SettlementDtos.SettlementSummaryDto>>> getMySettlements(Authentication authentication) {
+        Organizer organizer = getAuthenticatedOrganizer(authentication);
+        List<SettlementDtos.SettlementSummaryDto> settlements = settlementService.getSettlementsForOrganizer(organizer.getId());
+        return ResponseEntity.ok(ApiResponse.ok(settlements));
     }
 }
