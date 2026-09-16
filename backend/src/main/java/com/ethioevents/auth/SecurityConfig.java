@@ -44,6 +44,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/payments/**").permitAll()
                         .requestMatchers("/api/v1/tickets/public/**").permitAll()
                         .requestMatchers("/api/v1/uploads/**").permitAll()
+                        .requestMatchers("/api/v1/promo/**").permitAll()
                         .requestMatchers("/uploads/**").permitAll()
                         .requestMatchers("/h2-console/**").permitAll()
 

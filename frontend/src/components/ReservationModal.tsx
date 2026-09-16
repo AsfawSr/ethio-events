@@ -2,8 +2,22 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { X, CheckCircle, Smartphone, CreditCard, ShieldCheck, User, Phone, Sparkles, Loader2, ArrowRight } from 'lucide-react';
-import { TicketType, ReservationResponse } from '@/lib/types';
+import {
+  X,
+  CheckCircle,
+  Smartphone,
+  CreditCard,
+  ShieldCheck,
+  User,
+  Phone,
+  Sparkles,
+  Loader2,
+  ArrowRight,
+  Tag,
+  Check,
+  Percent,
+} from 'lucide-react';
+import { TicketType, ReservationResponse, ValidatePromoResponse } from '@/lib/types';
 import { api } from '@/lib/api';
 import CountdownTimer from './CountdownTimer';
 
@@ -27,8 +41,51 @@ export default function ReservationModal({
   const [reservation, setReservation] = useState<ReservationResponse | null>(null);
   const [paymentLoading, setPaymentLoading] = useState(false);
 
+  // Promo Code State
+  const [promoInput, setPromoInput] = useState('');
+  const [promoLoading, setPromoLoading] = useState(false);
+  const [promoResult, setPromoResult] = useState<ValidatePromoResponse | null>(null);
+  const [promoError, setPromoError] = useState<string | null>(null);
+
   const unitPrice = selectedTier.price;
-  const totalPrice = unitPrice * quantity;
+  const rawSubtotal = unitPrice * quantity;
+  const discountAmount = promoResult && promoResult.valid ? promoResult.discountAmount : 0;
+  const finalPayable = Math.max(0, rawSubtotal - discountAmount);
+
+  // Apply Promo Code
+  const handleApplyPromo = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!promoInput.trim()) return;
+
+    setPromoLoading(true);
+    setPromoError(null);
+    try {
+      const res = await api.validatePromoCode({
+        code: promoInput.trim(),
+        subtotal: rawSubtotal,
+        ticketCount: quantity,
+      });
+
+      if (res.valid) {
+        setPromoResult(res);
+        setPromoError(null);
+      } else {
+        setPromoResult(null);
+        setPromoError(res.message || 'Invalid promo code');
+      }
+    } catch (err: any) {
+      setPromoResult(null);
+      setPromoError(err.message || 'Could not validate promo code');
+    } finally {
+      setPromoLoading(false);
+    }
+  };
+
+  const handleRemovePromo = () => {
+    setPromoResult(null);
+    setPromoInput('');
+    setPromoError(null);
+  };
 
   // Step 1: Zero-Login Atomic Reservation
   const handleReserve = async (e: React.FormEvent) => {
@@ -50,6 +107,7 @@ export default function ReservationModal({
         quantity,
         customerPhone: customerPhone.trim(),
         customerName: customerName.trim(),
+        promoCode: promoResult && promoResult.valid ? promoResult.code : undefined,
       });
       setReservation(res);
     } catch (err: any) {
@@ -157,7 +215,17 @@ export default function ReservationModal({
                       <button
                         key={q}
                         type="button"
-                        onClick={() => setQuantity(q)}
+                        onClick={() => {
+                          setQuantity(q);
+                          if (promoResult) {
+                            // Revalidate with new quantity
+                            api.validatePromoCode({
+                              code: promoResult.code,
+                              subtotal: unitPrice * q,
+                              ticketCount: q,
+                            }).then((r) => r.valid && setPromoResult(r)).catch(() => {});
+                          }
+                        }}
                         className={`flex-1 py-2.5 rounded-xl font-bold text-sm transition border ${
                           quantity === q
                             ? 'bg-amber-400 text-black border-amber-400 shadow-glowGold'
@@ -209,13 +277,79 @@ export default function ReservationModal({
                 </p>
               </div>
 
+              {/* Promo Code Input Box */}
+              <div className="p-3.5 rounded-2xl bg-slate-800/40 border border-white/10 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+                    <Tag className="h-3.5 w-3.5 text-amber-400" />
+                    Promo Code or Voucher
+                  </span>
+                  {promoResult && (
+                    <button
+                      type="button"
+                      onClick={handleRemovePromo}
+                      className="text-[11px] font-semibold text-rose-400 hover:underline"
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
+
+                {!promoResult ? (
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="e.g. ROPHNAN20 or ADDIS100"
+                      value={promoInput}
+                      onChange={(e) => setPromoInput(e.target.value.toUpperCase())}
+                      className="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2 text-white text-xs font-mono uppercase focus:outline-none focus:border-amber-400"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleApplyPromo}
+                      disabled={promoLoading || !promoInput.trim()}
+                      className="bg-amber-400 hover:bg-amber-300 disabled:opacity-50 text-black font-bold px-4 py-2 rounded-xl text-xs transition active:scale-95 shadow"
+                    >
+                      {promoLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin text-black" /> : 'Apply'}
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between bg-emerald-500/10 border border-emerald-500/30 p-2.5 rounded-xl text-xs text-emerald-300">
+                    <div className="flex items-center gap-2">
+                      <Check className="h-4 w-4 text-emerald-400 shrink-0" />
+                      <span>
+                        Promo <strong>{promoResult.code}</strong> Applied! (
+                        {promoResult.discountType === 'PERCENTAGE'
+                          ? `${promoResult.discountValue}% OFF`
+                          : `-${promoResult.discountValue} ETB`}
+                        )
+                      </span>
+                    </div>
+                    <span className="font-mono font-bold text-emerald-400">
+                      - {discountAmount.toLocaleString()} ETB
+                    </span>
+                  </div>
+                )}
+
+                {promoError && (
+                  <p className="text-[11px] text-rose-400 font-medium">{promoError}</p>
+                )}
+              </div>
+
               {/* Total & Submit */}
               <div className="border-t border-white/10 pt-4 flex items-center justify-between">
                 <div>
                   <p className="text-xs text-slate-400">Total Payable</p>
-                  <p className="text-2xl font-black text-amber-400">
-                    {totalPrice.toLocaleString()} <span className="text-xs text-slate-300">ETB</span>
-                  </p>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-2xl font-black text-amber-400">
+                      {finalPayable.toLocaleString()} <span className="text-xs text-slate-300 font-normal">ETB</span>
+                    </span>
+                    {discountAmount > 0 && (
+                      <span className="text-xs line-through text-slate-500 font-mono">
+                        {rawSubtotal.toLocaleString()} ETB
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <button
                   type="submit"
@@ -248,83 +382,93 @@ export default function ReservationModal({
                 }}
               />
 
-              {/* Summary Pill */}
+              {/* Order Reservation Summary */}
               <div className="p-4 rounded-2xl bg-slate-800/40 border border-white/5 space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-400">Order Number:</span>
+                <div className="flex items-center justify-between text-xs text-slate-400">
+                  <span>Order Reference</span>
                   <span className="font-mono font-bold text-white">{reservation.orderNumber}</span>
                 </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-400">Tickets:</span>
-                  <span className="font-medium text-white">
+                <div className="flex items-center justify-between text-xs text-slate-400">
+                  <span>Tickets</span>
+                  <span className="font-semibold text-white">
                     {reservation.quantity}x {reservation.ticketTypeName}
                   </span>
                 </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-400">Customer:</span>
-                  <span className="font-medium text-white">{customerName} ({customerPhone})</span>
-                </div>
-                <div className="border-t border-white/10 pt-2 flex justify-between text-base font-bold">
-                  <span className="text-white">Amount Due:</span>
-                  <span className="text-amber-400 font-extrabold">
-                    {reservation.totalAmount.toLocaleString()} ETB
+                <div className="flex items-center justify-between text-sm pt-2 border-t border-white/5">
+                  <span className="font-bold text-slate-300">Total Due</span>
+                  <span className="text-lg font-black text-amber-400">
+                    {reservation.totalAmount.toLocaleString()} {reservation.currency}
                   </span>
                 </div>
               </div>
 
-              {/* Payment Methods */}
+              {/* Payment Method Action Buttons */}
               <div className="space-y-3">
-                <p className="text-xs font-bold uppercase tracking-wider text-slate-300">
-                  Select Local Payment Method:
+                <p className="text-xs uppercase font-bold tracking-wider text-slate-300 text-center">
+                  Select Ethiopian Payment Gateway
                 </p>
 
-                {/* Telebirr 1-Tap Button */}
+                {/* Telebirr 1-Tap Payment */}
                 <button
                   onClick={handleTelebirrPayment}
                   disabled={paymentLoading}
-                  className="w-full flex items-center justify-between p-4 rounded-2xl bg-gradient-to-r from-sky-600 to-sky-700 hover:from-sky-500 hover:to-sky-600 text-white font-bold transition shadow-glowTelebirr active:scale-[0.98] border border-sky-400/30"
+                  className="w-full flex items-center justify-between p-4 rounded-2xl bg-gradient-to-r from-sky-600 via-sky-500 to-blue-600 hover:from-sky-500 hover:to-blue-500 text-white font-bold text-sm shadow-lg transition active:scale-[0.99] disabled:opacity-50"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-xl bg-white flex items-center justify-center text-sky-600 font-black text-xs shadow">
-                      telebirr
+                    <div className="p-2 bg-white rounded-xl text-sky-600">
+                      <Smartphone className="h-5 w-5" />
                     </div>
                     <div className="text-left">
-                      <p className="text-base font-extrabold leading-tight">Pay with Telebirr</p>
-                      <p className="text-xs text-sky-200">USSD / App Direct Checkout</p>
+                      <p className="font-extrabold text-white">Telebirr (ቴሌብር)</p>
+                      <p className="text-[11px] text-sky-100 font-normal">
+                        Instant USSD / In-App Confirmation
+                      </p>
                     </div>
                   </div>
-                  <ArrowRight className="h-5 w-5" />
+                  <ArrowRight className="h-5 w-5 text-white" />
                 </button>
 
-                {/* Chapa Button */}
+                {/* Chapa Payment */}
                 <button
                   onClick={handleChapaPayment}
                   disabled={paymentLoading}
-                  className="w-full flex items-center justify-between p-4 rounded-2xl bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white font-bold transition shadow-glowEmerald active:scale-[0.98] border border-emerald-400/30"
+                  className="w-full flex items-center justify-between p-4 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-sm shadow-lg transition active:scale-[0.99] disabled:opacity-50"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-xl bg-white flex items-center justify-center text-emerald-600 font-black text-xs shadow">
-                      chapa
+                    <div className="p-2 bg-white rounded-xl text-emerald-600">
+                      <CreditCard className="h-5 w-5" />
                     </div>
                     <div className="text-left">
-                      <p className="text-base font-extrabold leading-tight">Pay with Chapa</p>
-                      <p className="text-xs text-emerald-200">CBE Birr, Bank Cards, Awash</p>
+                      <p className="font-extrabold text-white">Chapa (CBE / Bank / Telebirr)</p>
+                      <p className="text-[11px] text-emerald-100 font-normal">
+                        Commercial Bank of Ethiopia, Awash, Dashen
+                      </p>
                     </div>
                   </div>
-                  <ArrowRight className="h-5 w-5" />
+                  <ArrowRight className="h-5 w-5 text-white" />
                 </button>
 
-                {/* Instant Dev Demo Payment Simulator */}
-                <div className="pt-2 border-t border-white/5">
+                {/* Demo Payment Simulator */}
+                <div className="pt-2">
                   <button
                     onClick={handleSimulatePayment}
                     disabled={paymentLoading}
-                    className="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-600/50 text-slate-300 hover:text-white text-xs font-semibold transition flex items-center justify-center gap-1.5"
+                    className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl bg-slate-800/80 hover:bg-slate-700 border border-slate-700 text-amber-400 font-semibold text-xs transition active:scale-95 disabled:opacity-50"
                   >
-                    <Sparkles className="h-3.5 w-3.5 text-amber-400" />
-                    <span>Instant Demo: Simulate Telebirr Approval</span>
+                    {paymentLoading ? (
+                      <Loader2 className="h-4 w-4 animate-spin text-amber-400" />
+                    ) : (
+                      <Sparkles className="h-4 w-4 text-amber-400" />
+                    )}
+                    <span>Simulate Instant Mobile Money Payment</span>
                   </button>
                 </div>
+              </div>
+
+              {/* Security Banner */}
+              <div className="flex items-center justify-center gap-2 text-[11px] text-slate-400 pt-2 border-t border-white/5">
+                <ShieldCheck className="h-4 w-4 text-emerald-400" />
+                <span>256-Bit Encrypted Ethiopian Telecommunications Gateway</span>
               </div>
             </div>
           )}

@@ -54,6 +54,33 @@ export interface GuestReserveRequest {
   quantity: number;
   customerPhone: string;
   customerName: string;
+  promoCode?: string;
+}
+
+export interface ValidatePromoResponse {
+  valid: boolean;
+  code: string;
+  discountType: string;
+  discountValue: number;
+  discountAmount: number;
+  finalTotal: number;
+  message: string;
+}
+
+export interface PromoCodeItem {
+  id: string;
+  eventId?: string;
+  eventTitle?: string;
+  code: string;
+  discountType: 'PERCENTAGE' | 'FIXED_AMOUNT';
+  discountValue: number;
+  minOrderAmount?: number;
+  maxDiscountAmount?: number;
+  maxUses?: number;
+  timesUsed: number;
+  active: boolean;
+  validUntil?: string;
+  createdAt: string;
 }
 
 export interface ReservationResponse {

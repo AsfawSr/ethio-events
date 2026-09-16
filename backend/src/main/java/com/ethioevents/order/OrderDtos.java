@@ -22,8 +22,14 @@ public class OrderDtos {
             String customerPhone,
 
             @NotBlank(message = "Customer full name is required")
-            String customerName
-    ) {}
+            String customerName,
+
+            String promoCode
+    ) {
+        public GuestReserveRequest(UUID ticketTypeId, int quantity, String customerPhone, String customerName) {
+            this(ticketTypeId, quantity, customerPhone, customerName, null);
+        }
+    }
 
     public record ReservationResponse(
             String orderNumber,

@@ -24,11 +24,15 @@ import {
   ArrowRight,
   Radio,
   Activity,
-  Clock
+  Clock,
+  Tag,
+  Percent,
+  X,
+  Loader2
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { authStorage } from '@/lib/auth';
-import { OrganizerProfile, OrganizerSession, EventSummary, SettlementSummaryItem, CheckInLiveEvent, GateLiveStats } from '@/lib/types';
+import { OrganizerProfile, OrganizerSession, EventSummary, SettlementSummaryItem, CheckInLiveEvent, GateLiveStats, PromoCodeItem } from '@/lib/types';
 
 const ETHIOPIAN_BANKS = [
   'Commercial Bank of Ethiopia (CBE)',
@@ -47,8 +51,22 @@ export default function OrganizerPortalPage() {
   const [profile, setProfile] = useState<OrganizerProfile | null>(null);
   const [myEvents, setMyEvents] = useState<EventSummary[]>([]);
   const [settlements, setSettlements] = useState<SettlementSummaryItem[]>([]);
-  const [dashboardTab, setDashboardTab] = useState<'events' | 'settlements' | 'livegate'>('events');
+  const [promos, setPromos] = useState<PromoCodeItem[]>([]);
+  const [dashboardTab, setDashboardTab] = useState<'events' | 'settlements' | 'livegate' | 'promos'>('events');
   const [loading, setLoading] = useState(true);
+
+  // Promo Code Form Modal
+  const [showPromoModal, setShowPromoModal] = useState(false);
+  const [promoForm, setPromoForm] = useState({
+    code: '',
+    eventId: '',
+    discountType: 'PERCENTAGE',
+    discountValue: 20,
+    minOrderAmount: 0,
+    maxUses: 100,
+  });
+  const [promoCreating, setPromoCreating] = useState(false);
+  const [promoError, setPromoError] = useState<string | null>(null);
 
   // Live Turnstile Stream for Organizers
   const [selectedLiveEventId, setSelectedLiveEventId] = useState<string>('');
@@ -106,14 +124,16 @@ export default function OrganizerPortalPage() {
   const loadDashboardData = async () => {
     try {
       setLoading(true);
-      const [prof, events, stl] = await Promise.all([
+      const [prof, events, stl, prm] = await Promise.all([
         api.getOrganizerProfile(),
         api.getOrganizerEvents().catch(() => []),
         api.getOrganizerSettlements().catch(() => []),
+        api.getAllPromoCodes().catch(() => []),
       ]);
       setProfile(prof);
       setMyEvents(events);
       setSettlements(stl);
+      setPromos(prm);
       if (events.length > 0) {
         setSelectedLiveEventId((prev) => prev || events[0].id);
       }
@@ -124,8 +144,45 @@ export default function OrganizerPortalPage() {
       setProfile(null);
       setMyEvents([]);
       setSettlements([]);
+      setPromos([]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleCreatePromoCode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!promoForm.code.trim()) {
+      setPromoError('Please enter a promo code (e.g. EARLY20)');
+      return;
+    }
+
+    setPromoCreating(true);
+    setPromoError(null);
+    try {
+      const created = await api.createPromoCode({
+        code: promoForm.code.trim().toUpperCase(),
+        eventId: promoForm.eventId || undefined,
+        discountType: promoForm.discountType,
+        discountValue: Number(promoForm.discountValue),
+        minOrderAmount: Number(promoForm.minOrderAmount) || 0,
+        maxUses: Number(promoForm.maxUses) || 100,
+      });
+
+      setPromos((prev) => [created, ...prev]);
+      setShowPromoModal(false);
+      setPromoForm({
+        code: '',
+        eventId: '',
+        discountType: 'PERCENTAGE',
+        discountValue: 20,
+        minOrderAmount: 0,
+        maxUses: 100,
+      });
+    } catch (err: any) {
+      setPromoError(err.message || 'Failed to create promo code');
+    } finally {
+      setPromoCreating(false);
     }
   };
 
@@ -284,6 +341,43 @@ export default function OrganizerPortalPage() {
     setSession(null);
     setProfile(null);
     setMyEvents([]);
+    setSettlements([]);
+    setPromos([]);
+  };
+
+  // Handle Create Promo Code
+  const handleCreatePromo = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPromoError(null);
+    if (!promoForm.code.trim()) {
+      setPromoError('Promo code name is required (e.g. ADDISVIP)');
+      return;
+    }
+    try {
+      setPromoCreating(true);
+      const created = await api.createPromoCode({
+        code: promoForm.code.trim().toUpperCase(),
+        eventId: promoForm.eventId || undefined,
+        discountType: promoForm.discountType,
+        discountValue: Number(promoForm.discountValue),
+        minOrderAmount: Number(promoForm.minOrderAmount) || 0,
+        maxUses: Number(promoForm.maxUses) || undefined,
+      });
+      setPromos((prev) => [created, ...prev]);
+      setShowPromoModal(false);
+      setPromoForm({
+        code: '',
+        eventId: '',
+        discountType: 'PERCENTAGE',
+        discountValue: 20,
+        minOrderAmount: 0,
+        maxUses: 100,
+      });
+    } catch (err: any) {
+      setPromoError(err.message || 'Failed to create promo code');
+    } finally {
+      setPromoCreating(false);
+    }
   };
 
   // If loading session
@@ -447,6 +541,18 @@ export default function OrganizerPortalPage() {
               <Radio className="h-4 w-4 text-emerald-400" />
               Live Gate Stream
               {streamActive && <span className="h-2 w-2 rounded-full bg-emerald-400 animate-ping ml-1" />}
+            </button>
+
+            <button
+              onClick={() => setDashboardTab('promos')}
+              className={`px-4 py-2 rounded-xl text-sm font-bold transition flex items-center gap-2 ${
+                dashboardTab === 'promos'
+                  ? 'bg-amber-500 text-black shadow-glowGold'
+                  : 'text-slate-400 hover:text-white bg-slate-900/60 hover:bg-slate-800'
+              }`}
+            >
+              <Tag className="h-4 w-4" />
+              Promo Codes ({promos.length})
             </button>
           </div>
 
@@ -764,7 +870,297 @@ export default function OrganizerPortalPage() {
               </div>
             </div>
           )}
+
+          {/* TAB 4: Promo Codes & Discount Vouchers Section */}
+          {dashboardTab === 'promos' && (
+            <div className="space-y-6 animate-fadeIn">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                    <Tag className="h-5 w-5 text-amber-400" />
+                    Promo Codes & Group Discounts
+                  </h2>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Generate discount voucher codes for early birds, bulk group buyers, and VIP partners.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowPromoModal(true)}
+                  className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-amber-400 via-amber-300 to-yellow-400 px-4 py-2 text-xs font-bold text-black shadow-glowGold hover:from-amber-300 hover:to-yellow-300 transition w-fit"
+                >
+                  <Plus className="h-4 w-4 text-black" />
+                  Create Promo Code
+                </button>
+              </div>
+
+              {/* Promo Summary KPIs */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="p-5 rounded-2xl bg-slate-900/40 border border-white/10">
+                  <span className="text-xs font-bold uppercase text-slate-400">Total Active Codes</span>
+                  <div className="text-2xl font-black text-white mt-1">
+                    {promos.filter((p) => p.active).length}
+                  </div>
+                  <p className="text-[11px] text-amber-400 mt-1">Ready for checkout redemption</p>
+                </div>
+
+                <div className="p-5 rounded-2xl bg-slate-900/40 border border-white/10">
+                  <span className="text-xs font-bold uppercase text-slate-400">Total Redemptions</span>
+                  <div className="text-2xl font-black text-emerald-400 mt-1">
+                    {promos.reduce((acc, p) => acc + (p.timesUsed || 0), 0)}
+                  </div>
+                  <p className="text-[11px] text-slate-400 mt-1">Tickets reserved with discounts</p>
+                </div>
+
+                <div className="p-5 rounded-2xl bg-slate-900/40 border border-white/10">
+                  <span className="text-xs font-bold uppercase text-slate-400">Supported Currencies</span>
+                  <div className="text-2xl font-black text-indigo-400 mt-1">
+                    ETB / %
+                  </div>
+                  <p className="text-[11px] text-slate-400 mt-1">Percentage & Fixed discount models</p>
+                </div>
+              </div>
+
+              {/* Promo Table */}
+              <div className="rounded-2xl border border-white/10 bg-slate-900/60 overflow-hidden shadow-xl">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-slate-800/80 text-[11px] uppercase tracking-wider text-slate-400 border-b border-white/10">
+                      <tr>
+                        <th className="px-5 py-3.5 font-bold">Voucher Code</th>
+                        <th className="px-5 py-3.5 font-bold">Target Event</th>
+                        <th className="px-5 py-3.5 font-bold">Discount Rate</th>
+                        <th className="px-5 py-3.5 font-bold">Min Order</th>
+                        <th className="px-5 py-3.5 font-bold">Redemptions</th>
+                        <th className="px-5 py-3.5 font-bold text-center">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/5">
+                      {promos.length === 0 ? (
+                        <tr>
+                          <td colSpan={6} className="px-5 py-12 text-center text-slate-500">
+                            No promo codes created yet. Click "Create Promo Code" to add special discounts.
+                          </td>
+                        </tr>
+                      ) : (
+                        promos.map((p) => {
+                          const percentCap = p.maxUses ? Math.min(100, Math.round((p.timesUsed / p.maxUses) * 100)) : 0;
+                          return (
+                            <tr key={p.id} className="hover:bg-slate-800/40 transition">
+                              <td className="px-5 py-4">
+                                <span className="inline-flex items-center gap-1.5 font-mono font-black text-amber-400 bg-amber-500/10 border border-amber-500/25 px-2.5 py-1 rounded-lg text-xs">
+                                  <Tag className="h-3 w-3" />
+                                  {p.code}
+                                </span>
+                              </td>
+                              <td className="px-5 py-4 text-slate-300">
+                                {p.eventTitle || <span className="text-slate-500 italic">All Organized Events</span>}
+                              </td>
+                              <td className="px-5 py-4 font-bold text-emerald-400">
+                                {p.discountType === 'PERCENTAGE'
+                                  ? `${p.discountValue}% OFF`
+                                  : `${p.discountValue} ETB OFF`}
+                              </td>
+                              <td className="px-5 py-4 font-mono text-slate-400">
+                                {p.minOrderAmount && p.minOrderAmount > 0 ? `${p.minOrderAmount.toLocaleString()} ETB` : 'No Minimum'}
+                              </td>
+                              <td className="px-5 py-4">
+                                <div className="space-y-1">
+                                  <div className="flex justify-between text-[11px] font-mono text-slate-400">
+                                    <span>{p.timesUsed} used</span>
+                                    <span>{p.maxUses ? `/ ${p.maxUses}` : '(Unlimited)'}</span>
+                                  </div>
+                                  {p.maxUses && (
+                                    <div className="w-28 h-1 rounded-full bg-slate-800 overflow-hidden">
+                                      <div
+                                        className="h-full bg-amber-400 rounded-full"
+                                        style={{ width: `${percentCap}%` }}
+                                      />
+                                    </div>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="px-5 py-4 text-center">
+                                <span
+                                  className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                                    p.active
+                                      ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-500/40'
+                                      : 'bg-rose-950/80 text-rose-300 border border-rose-500/40'
+                                  }`}
+                                >
+                                  {p.active ? 'ACTIVE' : 'EXPIRED'}
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
+
+        {/* Modal: Create Promo Code */}
+        {showPromoModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fadeIn">
+            <div className="relative w-full max-w-lg rounded-2xl border border-white/10 bg-slate-900 p-6 shadow-2xl space-y-5">
+              <div className="flex items-center justify-between border-b border-white/10 pb-4">
+                <div className="flex items-center gap-2.5">
+                  <div className="h-9 w-9 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
+                    <Tag className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-white">Create New Promo Voucher</h3>
+                    <p className="text-xs text-slate-400">Configure discount code for ticket reservations</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowPromoModal(false)}
+                  className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              {promoError && (
+                <div className="flex items-center gap-2 rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-rose-300 text-xs">
+                  <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                  <span>{promoError}</span>
+                </div>
+              )}
+
+              <form onSubmit={handleCreatePromo} className="space-y-4 text-xs">
+                <div>
+                  <label className="block text-slate-300 font-bold mb-1.5">
+                    Promo Code (Voucher Keyword) *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. ADDISVIP20 or HABESHA50"
+                    value={promoForm.code}
+                    onChange={(e) => setPromoForm({ ...promoForm, code: e.target.value.toUpperCase() })}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-white font-mono font-bold uppercase focus:outline-none focus:border-amber-400 placeholder:text-slate-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-slate-300 font-bold mb-1.5">
+                    Applicable Event
+                  </label>
+                  <select
+                    value={promoForm.eventId}
+                    onChange={(e) => setPromoForm({ ...promoForm, eventId: e.target.value })}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-white font-semibold focus:outline-none focus:border-amber-400"
+                  >
+                    <option value="">All My Organized Events (Global Storewide)</option>
+                    {myEvents.map((evt) => (
+                      <option key={evt.id} value={evt.id}>
+                        {evt.title}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-slate-300 font-bold mb-1.5">
+                      Discount Type
+                    </label>
+                    <select
+                      value={promoForm.discountType}
+                      onChange={(e) => setPromoForm({ ...promoForm, discountType: e.target.value })}
+                      className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-white font-semibold focus:outline-none focus:border-amber-400"
+                    >
+                      <option value="PERCENTAGE">Percentage (%) Off</option>
+                      <option value="FIXED_AMOUNT">Fixed Amount (ETB) Off</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-slate-300 font-bold mb-1.5">
+                      Discount Value *
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        min="1"
+                        required
+                        value={promoForm.discountValue}
+                        onChange={(e) => setPromoForm({ ...promoForm, discountValue: parseFloat(e.target.value) || 0 })}
+                        className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-white font-bold focus:outline-none focus:border-amber-400"
+                      />
+                      <span className="absolute right-3 top-2.5 text-slate-400 font-bold">
+                        {promoForm.discountType === 'PERCENTAGE' ? '%' : 'ETB'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-slate-300 font-bold mb-1.5">
+                      Min. Order Amount (ETB)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={promoForm.minOrderAmount}
+                      onChange={(e) => setPromoForm({ ...promoForm, minOrderAmount: parseFloat(e.target.value) || 0 })}
+                      className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-white focus:outline-none focus:border-amber-400"
+                      placeholder="0 for none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-slate-300 font-bold mb-1.5">
+                      Max Total Redemptions
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={promoForm.maxUses}
+                      onChange={(e) => setPromoForm({ ...promoForm, maxUses: parseInt(e.target.value) || 0 })}
+                      className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-white focus:outline-none focus:border-amber-400"
+                      placeholder="100"
+                    />
+                  </div>
+                </div>
+
+                <div className="pt-3 border-t border-white/10 flex items-center justify-end gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => setShowPromoModal(false)}
+                    className="px-4 py-2 rounded-xl text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 font-bold transition"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={promoCreating}
+                    className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-amber-400 via-amber-300 to-yellow-400 px-5 py-2 text-xs font-bold text-black shadow-glowGold hover:from-amber-300 hover:to-yellow-300 transition disabled:opacity-50"
+                  >
+                    {promoCreating ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin text-black" />
+                        Generating Voucher...
+                      </>
+                    ) : (
+                      <>
+                        <Tag className="h-4 w-4 text-black" />
+                        Save & Activate Promo Code
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
