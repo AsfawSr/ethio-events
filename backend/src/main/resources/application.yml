@@ -61,8 +61,21 @@ ethioevents:
     base-url: "https://api.chapa.co/v1"
     webhook-secret: "demo-chapa-webhook-secret"
   sms:
-    provider: "MOCK" # MOCK | ETHIO_TELECOM | AFRICASTALKING
+    provider: ${ETHIOEVENTS_SMS_PROVIDER:MOCK} # MOCK | ETHIO_TELECOM | AFRICASTALKING | TWILIO
     mock-auto-verify: false
+    ethio-telecom:
+      api-url: ${ETHIO_TELECOM_SMS_URL:https://sms.ethiotelecom.et/api/v1/messages}
+      api-key: ${ETHIO_TELECOM_SMS_KEY:ET_SMS_DEMO_KEY}
+      sender-id: ${ETHIO_TELECOM_SENDER_ID:EthioEvents}
+    africas-talking:
+      username: ${AT_SMS_USERNAME:sandbox}
+      api-key: ${AT_SMS_API_KEY:atsk_demo_key}
+      sender-id: ${AT_SMS_SENDER_ID:EthioEvents}
+      api-url: ${AT_SMS_API_URL:https://api.africastalking.com/version1/messaging}
+    twilio:
+      account-sid: ${TWILIO_ACCOUNT_SID:AC_DEMO_SID}
+      auth-token: ${TWILIO_AUTH_TOKEN:TW_DEMO_TOKEN}
+      from-number: ${TWILIO_FROM_NUMBER:+1234567890}
   crypto:
     # Ed25519 seed for master ticket digital signing (Base64 32-byte seed)
     ed25519-seed: "VGVzdEVkaW8yMDI2RXZlbnRzU2VlZEZvclNpZ25pbmdLZXk="
