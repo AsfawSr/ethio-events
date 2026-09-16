@@ -59,4 +59,25 @@ public class GateDtos {
             int conflictCount,
             List<String> conflicts
     ) {}
+
+    public record CheckInLiveEvent(
+            UUID eventId,
+            String ticketCode,
+            String tierName,
+            String attendeeName,
+            String status,
+            Instant checkedInAt,
+            long totalCheckedIn,
+            long totalCapacity,
+            String gateSource
+    ) {}
+
+    public record GateLiveStatsDto(
+            UUID eventId,
+            String eventTitle,
+            long totalTickets,
+            long checkedInCount,
+            double occupancyPercent,
+            List<CheckInLiveEvent> recentCheckIns
+    ) {}
 }

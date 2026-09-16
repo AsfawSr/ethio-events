@@ -21,11 +21,14 @@ import {
   CreditCard,
   UserCheck,
   Layers,
-  ArrowRight
+  ArrowRight,
+  Radio,
+  Activity,
+  Clock
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { authStorage } from '@/lib/auth';
-import { OrganizerProfile, OrganizerSession, EventSummary, SettlementSummaryItem } from '@/lib/types';
+import { OrganizerProfile, OrganizerSession, EventSummary, SettlementSummaryItem, CheckInLiveEvent, GateLiveStats } from '@/lib/types';
 
 const ETHIOPIAN_BANKS = [
   'Commercial Bank of Ethiopia (CBE)',
@@ -44,8 +47,14 @@ export default function OrganizerPortalPage() {
   const [profile, setProfile] = useState<OrganizerProfile | null>(null);
   const [myEvents, setMyEvents] = useState<EventSummary[]>([]);
   const [settlements, setSettlements] = useState<SettlementSummaryItem[]>([]);
-  const [dashboardTab, setDashboardTab] = useState<'events' | 'settlements'>('events');
+  const [dashboardTab, setDashboardTab] = useState<'events' | 'settlements' | 'livegate'>('events');
   const [loading, setLoading] = useState(true);
+
+  // Live Turnstile Stream for Organizers
+  const [selectedLiveEventId, setSelectedLiveEventId] = useState<string>('');
+  const [liveCheckIns, setLiveCheckIns] = useState<CheckInLiveEvent[]>([]);
+  const [liveStats, setLiveStats] = useState<GateLiveStats | null>(null);
+  const [streamActive, setStreamActive] = useState(false);
 
   // Auth Tabs (unauthenticated state)
   const [activeTab, setActiveTab] = useState<'login' | 'register'>('login');
@@ -105,6 +114,9 @@ export default function OrganizerPortalPage() {
       setProfile(prof);
       setMyEvents(events);
       setSettlements(stl);
+      if (events.length > 0) {
+        setSelectedLiveEventId((prev) => prev || events[0].id);
+      }
     } catch (err: any) {
       console.warn('Organizer profile unavailable:', err);
       authStorage.clearSession();
@@ -116,6 +128,57 @@ export default function OrganizerPortalPage() {
       setLoading(false);
     }
   };
+
+  // Organizer Live Turnstile Stream Subscription
+  useEffect(() => {
+    if (!selectedLiveEventId) return;
+
+    api.getGateLiveStats(selectedLiveEventId)
+      .then((st) => {
+        setLiveStats(st);
+        if (st.recentCheckIns) setLiveCheckIns(st.recentCheckIns);
+      })
+      .catch(() => {
+        setLiveStats(null);
+        setLiveCheckIns([]);
+      });
+
+    let eventSource: EventSource | null = null;
+    try {
+      eventSource = new EventSource(api.getGateLiveStreamUrl(selectedLiveEventId));
+      eventSource.addEventListener('connected', () => setStreamActive(true));
+      eventSource.addEventListener('history', (e) => {
+        try {
+          const list: CheckInLiveEvent[] = JSON.parse(e.data);
+          setLiveCheckIns(list);
+        } catch {}
+      });
+      eventSource.addEventListener('checkin', (e) => {
+        try {
+          const checkin: CheckInLiveEvent = JSON.parse(e.data);
+          setLiveCheckIns((prev) => [checkin, ...prev.slice(0, 29)]);
+          setLiveStats((prev) => {
+            if (!prev) return null;
+            const updated = checkin.totalCheckedIn || prev.checkedInCount + 1;
+            const cap = checkin.totalCapacity || prev.totalTickets || 1;
+            return {
+              ...prev,
+              checkedInCount: updated,
+              totalTickets: cap,
+              occupancyPercent: Math.round(((updated / cap) * 100) * 10) / 10,
+            };
+          });
+        } catch {}
+      });
+      eventSource.onerror = () => setStreamActive(false);
+    } catch {
+      setStreamActive(false);
+    }
+
+    return () => {
+      if (eventSource) eventSource.close();
+    };
+  }, [selectedLiveEventId]);
 
   // Handle OTP Request
   const handleRequestOtp = async (e: React.FormEvent) => {
@@ -372,6 +435,19 @@ export default function OrganizerPortalPage() {
               <CreditCard className="h-4 w-4" />
               Settlements & Payout Ledger ({settlements.length})
             </button>
+
+            <button
+              onClick={() => setDashboardTab('livegate')}
+              className={`px-4 py-2 rounded-xl text-sm font-bold transition flex items-center gap-2 ${
+                dashboardTab === 'livegate'
+                  ? 'bg-amber-500 text-black shadow-glowGold'
+                  : 'text-slate-400 hover:text-white bg-slate-900/60 hover:bg-slate-800'
+              }`}
+            >
+              <Radio className="h-4 w-4 text-emerald-400" />
+              Live Gate Stream
+              {streamActive && <span className="h-2 w-2 rounded-full bg-emerald-400 animate-ping ml-1" />}
+            </button>
           </div>
 
           {/* TAB 1: My Organized Events Section */}
@@ -547,6 +623,144 @@ export default function OrganizerPortalPage() {
                     </tbody>
                   </table>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 3: Live Gate Activity Stream Section */}
+          {dashboardTab === 'livegate' && (
+            <div className="space-y-6 animate-fadeIn">
+              {/* Event Selector Header & Live Stream Pill */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 rounded-2xl bg-slate-900/60 border border-white/10">
+                <div className="space-y-1">
+                  <span className="text-xs font-bold text-slate-400 uppercase">Select Active Event to Monitor:</span>
+                  <div className="flex items-center gap-3">
+                    <select
+                      value={selectedLiveEventId}
+                      onChange={(e) => setSelectedLiveEventId(e.target.value)}
+                      className="bg-slate-800 border border-slate-700 text-white text-sm font-semibold rounded-xl px-3.5 py-2 focus:outline-none focus:border-amber-400"
+                    >
+                      {myEvents.map((evt) => (
+                        <option key={evt.id} value={evt.id}>
+                          {evt.title}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2.5">
+                  <div
+                    className={`flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full border ${
+                      streamActive
+                        ? 'bg-emerald-950/80 text-emerald-300 border-emerald-500/40'
+                        : 'bg-amber-950/80 text-amber-300 border-amber-500/40'
+                    }`}
+                  >
+                    <Radio className={`h-3.5 w-3.5 ${streamActive ? 'animate-pulse text-emerald-400' : ''}`} />
+                    <span>{streamActive ? 'SSE Live Stream Connected' : 'Connecting to Gate...'}</span>
+                  </div>
+
+                  <Link
+                    href="/gate"
+                    className="text-xs font-bold bg-amber-400 hover:bg-amber-300 text-black px-3 py-1.5 rounded-full transition shadow"
+                  >
+                    Open Gate Scanner PWA
+                  </Link>
+                </div>
+              </div>
+
+              {/* Live Occupancy Metric Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="p-5 rounded-2xl bg-slate-900/40 border border-white/10">
+                  <span className="text-xs font-bold uppercase text-slate-400">Total Check-Ins</span>
+                  <div className="text-2xl font-black text-white mt-1">
+                    {(liveStats?.checkedInCount || 0).toLocaleString()}
+                  </div>
+                  <p className="text-[11px] text-emerald-400 mt-1">Attendees admitted at turnstiles</p>
+                </div>
+
+                <div className="p-5 rounded-2xl bg-slate-900/40 border border-white/10">
+                  <span className="text-xs font-bold uppercase text-slate-400">Turnstile Occupancy</span>
+                  <div className="text-2xl font-black text-amber-400 mt-1">
+                    {liveStats?.occupancyPercent || 0}%
+                  </div>
+                  <div className="w-full h-1.5 rounded-full bg-slate-800 mt-2 overflow-hidden">
+                    <div
+                      className="h-full bg-gradient-to-r from-amber-400 to-emerald-400 rounded-full transition-all duration-500"
+                      style={{ width: `${Math.min(100, liveStats?.occupancyPercent || 0)}%` }}
+                    />
+                  </div>
+                </div>
+
+                <div className="p-5 rounded-2xl bg-slate-900/40 border border-white/10">
+                  <span className="text-xs font-bold uppercase text-slate-400">Gate Verification Speed</span>
+                  <div className="text-2xl font-black text-white mt-1">
+                    &lt; 100 ms
+                  </div>
+                  <p className="text-[11px] text-slate-400 mt-1">Ed25519 Curve25519 offline turnstile cryptographic engine</p>
+                </div>
+              </div>
+
+              {/* Check-In Event Ticker */}
+              <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-6 space-y-4">
+                <div className="flex items-center justify-between border-b border-white/10 pb-3">
+                  <h3 className="text-base font-bold text-white flex items-center gap-2">
+                    <Activity className="h-4 w-4 text-amber-400" />
+                    <span>Real-Time Gate Entrance Feed</span>
+                  </h3>
+                  <span className="text-xs font-mono text-slate-400">
+                    {liveCheckIns.length} Recents Captured
+                  </span>
+                </div>
+
+                {liveCheckIns.length === 0 ? (
+                  <div className="text-center py-12 text-slate-500 space-y-2">
+                    <Radio className="h-8 w-8 mx-auto text-slate-700 animate-pulse" />
+                    <p className="text-sm font-semibold">Awaiting turnstile scans for this event...</p>
+                    <p className="text-xs text-slate-600">
+                      Entrances scanned at Millennium Hall turnstiles or mobile gate scanners will stream here live.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-2 max-h-[420px] overflow-y-auto pr-1">
+                    {liveCheckIns.map((item, idx) => (
+                      <div
+                        key={`${item.ticketCode}-${idx}`}
+                        className="flex items-center justify-between p-3.5 rounded-xl bg-slate-950/70 border border-white/5 hover:border-amber-500/30 transition"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="h-8 w-8 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 flex items-center justify-center font-black">
+                            <CheckCircle2 className="h-4 w-4" />
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold text-white text-xs sm:text-sm">
+                                {item.attendeeName || 'Attendee'}
+                              </span>
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-400/20 text-amber-300 border border-amber-400/30">
+                                {item.tierName}
+                              </span>
+                            </div>
+                            <p className="text-[11px] font-mono text-slate-400 mt-0.5">
+                              Code: <strong>{item.ticketCode}</strong> • {item.gateSource}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="text-right">
+                          <span className="text-[11px] font-mono text-slate-400 flex items-center gap-1 justify-end">
+                            <Clock className="h-3 w-3 text-slate-500" />
+                            {item.checkedInAt ? new Date(item.checkedInAt).toLocaleTimeString() : 'Just now'}
+                          </span>
+                          <span className="text-[10px] text-emerald-400 font-semibold block">
+                            Admitted
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           )}

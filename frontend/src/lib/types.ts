@@ -280,6 +280,27 @@ export interface FileUploadResponse {
   uploadedAt: string;
 }
 
+export interface CheckInLiveEvent {
+  eventId: string;
+  ticketCode: string;
+  tierName: string;
+  attendeeName: string;
+  status: string;
+  checkedInAt: string;
+  totalCheckedIn: number;
+  totalCapacity: number;
+  gateSource: string;
+}
+
+export interface GateLiveStats {
+  eventId: string;
+  eventTitle: string;
+  totalTickets: number;
+  checkedInCount: number;
+  occupancyPercent: number;
+  recentCheckIns: CheckInLiveEvent[];
+}
+
 export interface ApiResponse<T> {
   success: boolean;
   data: T;
