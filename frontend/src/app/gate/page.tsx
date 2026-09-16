@@ -22,12 +22,19 @@ import {
   Clock,
   Sparkles,
   Layers,
+  Key,
+  Lock,
+  LogOut,
+  X,
+  Loader2,
+  Shield,
 } from 'lucide-react';
 import { Html5Qrcode } from 'html5-qrcode';
 import { api } from '@/lib/api';
+import { authStorage } from '@/lib/auth';
 import { getGateDb } from '@/lib/gateDb';
 import { processOfflineTicketScan, OfflineScanResult } from '@/lib/gateScanner';
-import { CheckInLiveEvent, GateLiveStats } from '@/lib/types';
+import { CheckInLiveEvent, GateLiveStats, GateCrewAuthResult } from '@/lib/types';
 
 function playEntryChime(isVip: boolean = false) {
   try {
@@ -61,6 +68,13 @@ export default function GateValidationPwaPage() {
   const [downloadLoading, setDownloadLoading] = useState(false);
   const [syncLoading, setSyncLoading] = useState(false);
 
+  // Gate Crew Temporary PIN Authentication State
+  const [crewSession, setCrewSession] = useState<GateCrewAuthResult | null>(null);
+  const [showPinModal, setShowPinModal] = useState(false);
+  const [crewPinInput, setCrewPinInput] = useState('');
+  const [crewLoginLoading, setCrewLoginLoading] = useState(false);
+  const [crewLoginError, setCrewLoginError] = useState<string | null>(null);
+
   // Live Stream & Turnstile Stats State
   const [activeTab, setActiveTab] = useState<'scanner' | 'livestream'>('scanner');
   const [soundEnabled, setSoundEnabled] = useState(true);
@@ -69,6 +83,61 @@ export default function GateValidationPwaPage() {
   const [liveStats, setLiveStats] = useState<GateLiveStats | null>(null);
 
   const qrScannerRef = useRef<Html5Qrcode | null>(null);
+
+  // Check saved Gate Crew Session on mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('ethioevents_gate_crew_session');
+      if (saved) {
+        const parsed: GateCrewAuthResult = JSON.parse(saved);
+        if (new Date(parsed.expiresAt) > new Date()) {
+          setCrewSession(parsed);
+          if (parsed.eventId) {
+            setSelectedEventId(parsed.eventId);
+          }
+          if (parsed.eventTitle) {
+            setEventTitle(parsed.eventTitle);
+          }
+        } else {
+          localStorage.removeItem('ethioevents_gate_crew_session');
+        }
+      }
+    } catch {}
+  }, []);
+
+  const handleCrewPinLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCrewLoginError(null);
+    if (!crewPinInput.trim() || crewPinInput.trim().length !== 6) {
+      setCrewLoginError('Please enter a valid 6-digit crew PIN');
+      return;
+    }
+
+    try {
+      setCrewLoginLoading(true);
+      const res = await api.loginGateCrewPin(crewPinInput.trim(), selectedEventId);
+      setCrewSession(res);
+      localStorage.setItem('ethioevents_gate_crew_session', JSON.stringify(res));
+      authStorage.setToken(res.token);
+      if (res.eventId) {
+        setSelectedEventId(res.eventId);
+      }
+      if (res.eventTitle) {
+        setEventTitle(res.eventTitle);
+      }
+      setShowPinModal(false);
+      setCrewPinInput('');
+    } catch (err: any) {
+      setCrewLoginError(err.message || 'Invalid or expired 6-digit PIN code');
+    } finally {
+      setCrewLoginLoading(false);
+    }
+  };
+
+  const handleCrewLogout = () => {
+    setCrewSession(null);
+    localStorage.removeItem('ethioevents_gate_crew_session');
+  };
 
   // Monitor Network Online/Offline Status
   useEffect(() => {
@@ -358,6 +427,33 @@ export default function GateValidationPwaPage() {
 
         {/* Connectivity & Stream Pills */}
         <div className="flex flex-wrap items-center gap-2.5">
+          {/* Gate Crew Access Status */}
+          {crewSession ? (
+            <div className="flex items-center gap-2 bg-emerald-950/80 border border-emerald-500/40 rounded-full px-3 py-1 text-xs">
+              <Shield className="h-3.5 w-3.5 text-emerald-400" />
+              <span className="font-bold text-emerald-300 truncate max-w-[140px]">
+                {crewSession.gateName}
+              </span>
+              <button
+                type="button"
+                onClick={handleCrewLogout}
+                className="text-slate-400 hover:text-white ml-1"
+                title="Logout Gate Crew"
+              >
+                <LogOut className="h-3 w-3" />
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setShowPinModal(true)}
+              className="flex items-center gap-1.5 text-xs font-bold bg-slate-800 text-amber-400 border border-amber-500/30 hover:bg-slate-700 px-3 py-1.5 rounded-full transition"
+            >
+              <Key className="h-3.5 w-3.5 text-amber-400" />
+              <span>Staff PIN Login</span>
+            </button>
+          )}
+
           <button
             onClick={() => setSoundEnabled(!soundEnabled)}
             className={`flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full border transition ${
@@ -717,6 +813,104 @@ export default function GateValidationPwaPage() {
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {/* Modal: Fast Gate Crew PIN Login */}
+      {showPinModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fadeIn">
+          <div className="relative w-full max-w-sm rounded-3xl border border-white/10 bg-slate-900 p-6 shadow-2xl space-y-5">
+            <div className="flex items-center justify-between border-b border-white/10 pb-4">
+              <div className="flex items-center gap-2.5">
+                <div className="h-10 w-10 rounded-2xl bg-gradient-to-tr from-amber-500 to-yellow-300 flex items-center justify-center text-black font-black">
+                  <Key className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-white">Turnstile Gate PIN</h3>
+                  <p className="text-[11px] text-slate-400">Fast 6-digit staff check-in</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowPinModal(false)}
+                className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {crewLoginError && (
+              <div className="flex items-center gap-2 rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-rose-300 text-xs">
+                <AlertTriangle className="h-4 w-4 flex-shrink-0" />
+                <span>{crewLoginError}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleCrewPinLogin} className="space-y-4">
+              <div>
+                <label className="block text-slate-300 text-xs font-bold mb-1.5 text-center uppercase tracking-wider">
+                  Enter 6-Digit Gate Access PIN
+                </label>
+                <input
+                  type="password"
+                  inputMode="numeric"
+                  maxLength={6}
+                  autoFocus
+                  required
+                  placeholder="••••••"
+                  value={crewPinInput}
+                  onChange={(e) => setCrewPinInput(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  className="w-full text-center text-2xl tracking-[0.5em] font-mono font-black bg-slate-950 border border-slate-700 rounded-2xl py-3 text-amber-400 focus:outline-none focus:border-amber-400 placeholder:text-slate-700"
+                />
+              </div>
+
+              {/* Touch keypad helper */}
+              <div className="grid grid-cols-3 gap-2 pt-1">
+                {['1', '2', '3', '4', '5', '6', '7', '8', '9', 'C', '0', '⌫'].map((k) => (
+                  <button
+                    key={k}
+                    type="button"
+                    onClick={() => {
+                      if (k === 'C') {
+                        setCrewPinInput('');
+                      } else if (k === '⌫') {
+                        setCrewPinInput((prev) => prev.slice(0, -1));
+                      } else {
+                        setCrewPinInput((prev) => (prev + k).slice(0, 6));
+                      }
+                    }}
+                    className="py-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 active:bg-amber-500 active:text-black text-white font-mono font-bold text-sm transition"
+                  >
+                    {k}
+                  </button>
+                ))}
+              </div>
+
+              <div className="pt-2 flex items-center justify-end gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setShowPinModal(false)}
+                  className="w-1/2 py-2.5 rounded-xl text-xs font-bold text-slate-400 hover:text-white bg-slate-800 transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={crewLoginLoading || crewPinInput.length !== 6}
+                  className="w-1/2 py-2.5 rounded-xl text-xs font-bold text-black bg-gradient-to-r from-amber-400 to-yellow-400 shadow-glowGold hover:from-amber-300 transition disabled:opacity-50 flex items-center justify-center gap-1.5"
+                >
+                  {crewLoginLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin text-black" />
+                  ) : (
+                    <>
+                      <Shield className="h-3.5 w-3.5" />
+                      Authenticate
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
     </div>

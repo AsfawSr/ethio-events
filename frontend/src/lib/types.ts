@@ -83,6 +83,30 @@ export interface PromoCodeItem {
   createdAt: string;
 }
 
+export interface GateCrewPinItem {
+  id: string;
+  eventId: string;
+  eventTitle: string;
+  gateName: string;
+  pinCode: string;
+  crewMemberName?: string;
+  expiresAt: string;
+  active: boolean;
+  createdAt: string;
+  lastUsedAt?: string;
+  loginCount: number;
+}
+
+export interface GateCrewAuthResult {
+  token: string;
+  role: string;
+  eventId: string;
+  eventTitle: string;
+  gateName: string;
+  crewMemberName?: string;
+  expiresAt: string;
+}
+
 export interface ReservationResponse {
   orderNumber: string;
   eventTitle: string;
@@ -196,7 +220,7 @@ export interface OrganizerProfile {
 export interface OrganizerSession {
   token: string;
   userId: string;
-  phoneNumber: string;
+  phoneNumber?: string;
   fullName: string;
   role: string;
   organizerId?: string;

@@ -42,6 +42,23 @@ public class JwtTokenProvider {
                 .compact();
     }
 
+    public String generateGateCrewToken(UUID pinId, UUID eventId, String gateName, String crewMemberName, long expirationMs) {
+        Date now = new Date();
+        Date expiryDate = new Date(now.getTime() + expirationMs);
+
+        return Jwts.builder()
+                .subject(pinId.toString())
+                .claim("role", UserRole.GATE_CREW.name())
+                .claim("eventId", eventId.toString())
+                .claim("gateName", gateName)
+                .claim("crewMemberName", crewMemberName)
+                .claim("fullName", crewMemberName != null && !crewMemberName.isBlank() ? crewMemberName : "Gate Staff (" + gateName + ")")
+                .issuedAt(now)
+                .expiration(expiryDate)
+                .signWith(secretKey)
+                .compact();
+    }
+
     public Claims getClaimsFromToken(String token) {
         return Jwts.parser()
                 .verifyWith(secretKey)

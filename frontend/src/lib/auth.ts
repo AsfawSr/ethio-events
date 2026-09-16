@@ -38,6 +38,20 @@ export const authStorage = {
     return session ? session.token : null;
   },
 
+  setToken: (token: string): void => {
+    const session = authStorage.getSession();
+    if (session) {
+      authStorage.setSession({ ...session, token });
+    } else {
+      authStorage.setSession({
+        token,
+        userId: 'gate_crew',
+        fullName: 'Gate Crew Staff',
+        role: 'GATE_CREW',
+      });
+    }
+  },
+
   isOrganizer: (): boolean => {
     const session = authStorage.getSession();
     return !!session && session.role === 'ORGANIZER';

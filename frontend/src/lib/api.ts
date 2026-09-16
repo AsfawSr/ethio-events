@@ -303,5 +303,26 @@ export const api = {
 
   getAllPromoCodes: () =>
     fetchApi<import('./types').PromoCodeItem[]>('/promo'),
+
+  // Gate Crew Temporary Access PINs
+  getGateCrewPins: (eventId: string) =>
+    fetchApi<import('./types').GateCrewPinItem[]>(`/gate/crew/event/${eventId}`),
+
+  createGateCrewPin: (data: { eventId: string; gateName: string; crewMemberName?: string; validHours?: number }) =>
+    fetchApi<import('./types').GateCrewPinItem>('/gate/crew/generate', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  revokeGateCrewPin: (pinId: string) =>
+    fetchApi<string>(`/gate/crew/${pinId}`, {
+      method: 'DELETE',
+    }),
+
+  loginGateCrewPin: (pinCode: string, eventId?: string) =>
+    fetchApi<import('./types').GateCrewAuthResult>('/gate/crew/login', {
+      method: 'POST',
+      body: JSON.stringify({ pinCode, eventId }),
+    }),
 };
 
