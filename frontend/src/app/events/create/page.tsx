@@ -17,7 +17,12 @@ import {
   AlertCircle,
   Building2,
   Layers,
-  Users
+  Users,
+  UploadCloud,
+  Loader2,
+  Check,
+  FileImage,
+  X
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { authStorage } from '@/lib/auth';
@@ -103,6 +108,37 @@ export default function CreateEventPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successEventSlug, setSuccessEventSlug] = useState<string | null>(null);
+
+  // Media Upload State
+  const [imageMode, setImageMode] = useState<'upload' | 'preset' | 'url'>('upload');
+  const [uploadLoading, setUploadLoading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+
+  const handleFileUpload = async (file: File) => {
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      setUploadError('Please select a valid image file (JPEG, PNG, WebP, GIF, SVG).');
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setUploadError('File size exceeds maximum 10MB limit.');
+      return;
+    }
+
+    setUploadLoading(true);
+    setUploadError(null);
+    try {
+      const res = await api.uploadImage(file);
+      setBannerImageUrl(res.fileUrl || res.url || '');
+      setUploadedFileName(file.name);
+    } catch (err: any) {
+      setUploadError(err.message || 'Failed to upload image. Please try again or use a direct URL.');
+    } finally {
+      setUploadLoading(false);
+    }
+  };
 
   // Add Ticket Tier
   const handleAddTier = () => {
@@ -334,47 +370,193 @@ export default function CreateEventPage() {
               />
             </div>
 
-            {/* Banner Image Selection */}
-            <div>
-              <label className="block text-sm font-semibold text-slate-300 mb-2">
-                Banner Image URL
-              </label>
-              <div className="flex gap-2">
-                <input
-                  type="url"
-                  required
-                  value={bannerImageUrl}
-                  onChange={(e) => setBannerImageUrl(e.target.value)}
-                  placeholder="https://images.unsplash.com/..."
-                  className="flex-1 rounded-xl border border-slate-700 bg-slate-800/80 px-4 py-3 text-white placeholder-slate-500 focus:border-amber-400 focus:outline-none focus:ring-1 focus:ring-amber-400 transition text-sm"
-                />
+            {/* Banner Image Selection & Uploader */}
+            <div className="space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <label className="block text-sm font-semibold text-slate-300">
+                  Event Poster / Banner <span className="text-amber-400">*</span>
+                </label>
+
+                {/* Mode Selector Tabs */}
+                <div className="flex items-center gap-1 rounded-xl bg-slate-800/80 p-1 border border-slate-700 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => setImageMode('upload')}
+                    className={`flex items-center gap-1.5 px-3 py-1 rounded-lg font-medium transition ${
+                      imageMode === 'upload'
+                        ? 'bg-amber-400 text-black font-semibold shadow'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <UploadCloud className="h-3.5 w-3.5" />
+                    Upload File
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setImageMode('preset')}
+                    className={`flex items-center gap-1.5 px-3 py-1 rounded-lg font-medium transition ${
+                      imageMode === 'preset'
+                        ? 'bg-amber-400 text-black font-semibold shadow'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <ImageIcon className="h-3.5 w-3.5" />
+                    Curated Themes
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setImageMode('url')}
+                    className={`flex items-center gap-1.5 px-3 py-1 rounded-lg font-medium transition ${
+                      imageMode === 'url'
+                        ? 'bg-amber-400 text-black font-semibold shadow'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    Direct URL
+                  </button>
+                </div>
               </div>
 
-              {/* Quick Preset Banners */}
-              <div className="mt-3">
-                <span className="text-xs text-slate-400 block mb-2">Or choose a curated event poster:</span>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {/* Upload Mode: Drag and Drop Zone */}
+              {imageMode === 'upload' && (
+                <div className="space-y-3">
+                  <div
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      setIsDragging(true);
+                    }}
+                    onDragLeave={() => setIsDragging(false)}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      setIsDragging(false);
+                      if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+                        handleFileUpload(e.dataTransfer.files[0]);
+                      }
+                    }}
+                    className={`relative flex flex-col items-center justify-center rounded-2xl border-2 border-dashed p-6 text-center transition-all ${
+                      isDragging
+                        ? 'border-amber-400 bg-amber-500/10 scale-[1.01]'
+                        : 'border-slate-700 bg-slate-800/40 hover:border-slate-500 hover:bg-slate-800/60'
+                    }`}
+                  >
+                    <input
+                      type="file"
+                      id="event-poster-input"
+                      accept="image/png, image/jpeg, image/webp, image/gif, image/svg+xml"
+                      onChange={(e) => {
+                        if (e.target.files && e.target.files[0]) {
+                          handleFileUpload(e.target.files[0]);
+                        }
+                      }}
+                      className="hidden"
+                    />
+
+                    {uploadLoading ? (
+                      <div className="flex flex-col items-center py-4">
+                        <Loader2 className="h-10 w-10 animate-spin text-amber-400 mb-2" />
+                        <span className="text-sm font-semibold text-white">Uploading event banner...</span>
+                        <span className="text-xs text-slate-400 mt-1">Processing image and generating CDN URL</span>
+                      </div>
+                    ) : (
+                      <label
+                        htmlFor="event-poster-input"
+                        className="flex flex-col items-center cursor-pointer w-full"
+                      >
+                        <div className="mb-3 rounded-full bg-amber-500/10 p-3 text-amber-400 border border-amber-500/20 group-hover:scale-110 transition">
+                          <UploadCloud className="h-6 w-6" />
+                        </div>
+                        <span className="text-sm font-semibold text-white">
+                          Click to upload or drag & drop event poster
+                        </span>
+                        <span className="text-xs text-slate-400 mt-1">
+                          PNG, JPG, WEBP, GIF, SVG (Up to 10MB)
+                        </span>
+                      </label>
+                    )}
+                  </div>
+
+                  {uploadError && (
+                    <div className="flex items-center gap-2 rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-300">
+                      <AlertCircle className="h-4 w-4 flex-shrink-0 text-rose-400" />
+                      <span>{uploadError}</span>
+                    </div>
+                  )}
+
+                  {uploadedFileName && (
+                    <div className="flex items-center justify-between rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-2.5 px-3 text-xs text-emerald-300">
+                      <div className="flex items-center gap-2 truncate">
+                        <Check className="h-4 w-4 text-emerald-400 flex-shrink-0" />
+                        <span className="truncate">Uploaded: <strong>{uploadedFileName}</strong></span>
+                      </div>
+                      <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300">
+                        Ready
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Preset Gallery Mode */}
+              {imageMode === 'preset' && (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                   {PRESET_BANNERS.map((banner, idx) => (
                     <button
                       type="button"
                       key={idx}
                       onClick={() => setBannerImageUrl(banner.url)}
-                      className={`relative overflow-hidden rounded-lg border text-left text-xs transition p-1.5 flex flex-col items-center gap-1.5 ${
+                      className={`group relative overflow-hidden rounded-xl border text-left text-xs transition p-2 flex flex-col items-center gap-1.5 ${
                         bannerImageUrl === banner.url
-                          ? 'border-amber-400 bg-amber-500/20 text-amber-300'
+                          ? 'border-amber-400 bg-amber-500/20 text-amber-300 shadow-md shadow-amber-500/10'
                           : 'border-slate-700 bg-slate-800/40 text-slate-400 hover:border-slate-500'
                       }`}
                     >
                       <img
                         src={banner.url}
                         alt={banner.label}
-                        className="h-14 w-full object-cover rounded"
+                        className="h-16 w-full object-cover rounded-lg group-hover:scale-105 transition duration-300"
                       />
-                      <span className="truncate w-full text-center font-medium">{banner.label}</span>
+                      <span className="truncate w-full text-center font-semibold mt-1">{banner.label}</span>
                     </button>
                   ))}
                 </div>
-              </div>
+              )}
+
+              {/* Direct URL Mode */}
+              {imageMode === 'url' && (
+                <div>
+                  <input
+                    type="url"
+                    required
+                    value={bannerImageUrl}
+                    onChange={(e) => setBannerImageUrl(e.target.value)}
+                    placeholder="https://images.unsplash.com/..."
+                    className="w-full rounded-xl border border-slate-700 bg-slate-800/80 px-4 py-3 text-white placeholder-slate-500 focus:border-amber-400 focus:outline-none focus:ring-1 focus:ring-amber-400 transition text-sm"
+                  />
+                </div>
+              )}
+
+              {/* Live Image Preview Banner */}
+              {bannerImageUrl && (
+                <div className="relative rounded-xl overflow-hidden border border-slate-700 bg-slate-800/40 p-2">
+                  <div className="relative h-32 w-full rounded-lg overflow-hidden bg-slate-950">
+                    <img
+                      src={bannerImageUrl}
+                      alt="Banner Preview"
+                      className="h-full w-full object-cover"
+                      onError={(e) => {
+                        (e.target as HTMLElement).style.display = 'none';
+                      }}
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent pointer-events-none" />
+                    <div className="absolute bottom-2 left-3 right-3 flex items-center justify-between text-xs text-white">
+                      <span className="font-semibold drop-shadow">Live Banner Preview</span>
+                      <span className="rounded bg-black/60 backdrop-blur px-2 py-0.5 text-[10px] text-amber-300 border border-amber-400/30">
+                        Public Display
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 

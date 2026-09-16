@@ -271,6 +271,15 @@ export interface SettlementCalculation {
   existingSettlementId?: string;
 }
 
+export interface FileUploadResponse {
+  fileUrl: string;
+  url?: string;
+  fileName: string;
+  fileSize: number;
+  contentType: string;
+  uploadedAt: string;
+}
+
 export interface ApiResponse<T> {
   success: boolean;
   data: T;
