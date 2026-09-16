@@ -25,7 +25,7 @@ import {
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { authStorage } from '@/lib/auth';
-import { OrganizerProfile, OrganizerSession, EventSummary } from '@/lib/types';
+import { OrganizerProfile, OrganizerSession, EventSummary, SettlementSummaryItem } from '@/lib/types';
 
 const ETHIOPIAN_BANKS = [
   'Commercial Bank of Ethiopia (CBE)',
@@ -43,6 +43,8 @@ export default function OrganizerPortalPage() {
   const [session, setSession] = useState<OrganizerSession | null>(null);
   const [profile, setProfile] = useState<OrganizerProfile | null>(null);
   const [myEvents, setMyEvents] = useState<EventSummary[]>([]);
+  const [settlements, setSettlements] = useState<SettlementSummaryItem[]>([]);
+  const [dashboardTab, setDashboardTab] = useState<'events' | 'settlements'>('events');
   const [loading, setLoading] = useState(true);
 
   // Auth Tabs (unauthenticated state)
@@ -95,16 +97,21 @@ export default function OrganizerPortalPage() {
   const loadDashboardData = async () => {
     try {
       setLoading(true);
-      const prof = await api.getOrganizerProfile();
-      const events = await api.getOrganizerEvents().catch(() => []);
+      const [prof, events, stl] = await Promise.all([
+        api.getOrganizerProfile(),
+        api.getOrganizerEvents().catch(() => []),
+        api.getOrganizerSettlements().catch(() => []),
+      ]);
       setProfile(prof);
       setMyEvents(events);
+      setSettlements(stl);
     } catch (err: any) {
       console.warn('Organizer profile unavailable:', err);
       authStorage.clearSession();
       setSession(null);
       setProfile(null);
       setMyEvents([]);
+      setSettlements([]);
     } finally {
       setLoading(false);
     }
@@ -340,94 +347,209 @@ export default function OrganizerPortalPage() {
             </div>
           )}
 
-          {/* My Organized Events Section */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                My Organized Events
-                <span className="text-xs font-normal text-slate-400">({myEvents.length})</span>
-              </h2>
-              <Link
-                href="/events/create"
-                className="text-xs font-semibold text-amber-400 hover:text-amber-300 transition flex items-center gap-1"
-              >
-                + Add Another Event
-              </Link>
-            </div>
+          {/* Dashboard Navigation Tabs */}
+          <div className="flex items-center gap-3 border-b border-white/10 pb-2">
+            <button
+              onClick={() => setDashboardTab('events')}
+              className={`px-4 py-2 rounded-xl text-sm font-bold transition flex items-center gap-2 ${
+                dashboardTab === 'events'
+                  ? 'bg-amber-500 text-black shadow-glowGold'
+                  : 'text-slate-400 hover:text-white bg-slate-900/60 hover:bg-slate-800'
+              }`}
+            >
+              <Layers className="h-4 w-4" />
+              My Events ({myEvents.length})
+            </button>
 
-            {myEvents.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-slate-700 bg-slate-900/30 p-12 text-center">
-                <Sparkles className="mx-auto h-12 w-12 text-amber-400 mb-3 opacity-60" />
-                <h3 className="text-lg font-bold text-white">No Events Published Yet</h3>
-                <p className="mt-1 text-sm text-slate-400 max-w-md mx-auto">
-                  Create your first concert, summit, or festival to start selling tickets via Telebirr & Chapa.
-                </p>
+            <button
+              onClick={() => setDashboardTab('settlements')}
+              className={`px-4 py-2 rounded-xl text-sm font-bold transition flex items-center gap-2 ${
+                dashboardTab === 'settlements'
+                  ? 'bg-amber-500 text-black shadow-glowGold'
+                  : 'text-slate-400 hover:text-white bg-slate-900/60 hover:bg-slate-800'
+              }`}
+            >
+              <CreditCard className="h-4 w-4" />
+              Settlements & Payout Ledger ({settlements.length})
+            </button>
+          </div>
+
+          {/* TAB 1: My Organized Events Section */}
+          {dashboardTab === 'events' && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                  My Published Events
+                  <span className="text-xs font-normal text-slate-400">({myEvents.length})</span>
+                </h2>
                 <Link
                   href="/events/create"
-                  className="mt-5 inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-amber-400 via-amber-300 to-yellow-400 px-6 py-2.5 text-sm font-bold text-black shadow-glowGold hover:from-amber-300 hover:to-yellow-300 transition"
+                  className="text-xs font-semibold text-amber-400 hover:text-amber-300 transition flex items-center gap-1"
                 >
-                  <Plus className="h-4 w-4 text-black" />
-                  Publish First Event
+                  + Add Another Event
                 </Link>
               </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {myEvents.map((evt) => (
-                  <div
-                    key={evt.id}
-                    className="rounded-2xl border border-white/10 bg-slate-900/60 p-5 space-y-4 hover:border-slate-700 transition"
-                  >
-                    <div className="flex gap-4">
-                      <img
-                        src={evt.bannerImageUrl}
-                        alt={evt.title}
-                        className="h-20 w-24 rounded-xl object-cover border border-white/10 flex-shrink-0"
-                      />
-                      <div className="flex-1 min-w-0">
-                        <span className="inline-block text-[10px] font-bold uppercase tracking-wider bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2 py-0.5 rounded mb-1">
-                          {evt.status}
-                        </span>
-                        <h3 className="text-base font-bold text-white truncate">{evt.title}</h3>
-                        <p className="text-xs text-slate-400 flex items-center gap-1 mt-1 truncate">
-                          <MapPin className="h-3 w-3 text-amber-400 flex-shrink-0" />
-                          {evt.venueName}
-                        </p>
-                        <p className="text-xs text-slate-400 flex items-center gap-1 mt-0.5">
-                          <Calendar className="h-3 w-3 text-amber-400 flex-shrink-0" />
-                          {evt.startTime.ethiopianDateFormatted}
-                        </p>
-                      </div>
-                    </div>
 
-                    <div className="flex items-center justify-between pt-3 border-t border-white/5 text-xs">
-                      <div>
-                        <span className="text-slate-400">Tiers: </span>
-                        <span className="font-bold text-white">
-                          {evt.minPrice} - {evt.maxPrice} ETB
-                        </span>
+              {myEvents.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-slate-700 bg-slate-900/30 p-12 text-center">
+                  <Sparkles className="mx-auto h-12 w-12 text-amber-400 mb-3 opacity-60" />
+                  <h3 className="text-lg font-bold text-white">No Events Published Yet</h3>
+                  <p className="mt-1 text-sm text-slate-400 max-w-md mx-auto">
+                    Create your first concert, summit, or festival to start selling tickets via Telebirr & Chapa.
+                  </p>
+                  <Link
+                    href="/events/create"
+                    className="mt-5 inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-amber-400 via-amber-300 to-yellow-400 px-6 py-2.5 text-sm font-bold text-black shadow-glowGold hover:from-amber-300 hover:to-yellow-300 transition"
+                  >
+                    <Plus className="h-4 w-4 text-black" />
+                    Publish First Event
+                  </Link>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {myEvents.map((evt) => (
+                    <div
+                      key={evt.id}
+                      className="rounded-2xl border border-white/10 bg-slate-900/60 p-5 space-y-4 hover:border-slate-700 transition"
+                    >
+                      <div className="flex gap-4">
+                        <img
+                          src={evt.bannerImageUrl}
+                          alt={evt.title}
+                          className="h-20 w-24 rounded-xl object-cover border border-white/10 flex-shrink-0"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <span className="inline-block text-[10px] font-bold uppercase tracking-wider bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2 py-0.5 rounded mb-1">
+                            {evt.status}
+                          </span>
+                          <h3 className="text-base font-bold text-white truncate">{evt.title}</h3>
+                          <p className="text-xs text-slate-400 flex items-center gap-1 mt-1 truncate">
+                            <MapPin className="h-3 w-3 text-amber-400 flex-shrink-0" />
+                            {evt.venueName}
+                          </p>
+                          <p className="text-xs text-slate-400 flex items-center gap-1 mt-0.5">
+                            <Calendar className="h-3 w-3 text-amber-400 flex-shrink-0" />
+                            {evt.startTime.ethiopianDateFormatted}
+                          </p>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Link
-                          href={`/gate`}
-                          className="flex items-center gap-1 font-semibold text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded-lg border border-slate-700 transition"
-                        >
-                          <QrCode className="h-3.5 w-3.5 text-amber-400" />
-                          Gate Scanner
-                        </Link>
-                        <Link
-                          href={`/events/${evt.slug}`}
-                          className="flex items-center gap-1 font-semibold text-amber-400 hover:text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 px-3 py-1.5 rounded-lg border border-amber-500/30 transition"
-                        >
-                          View Page
-                          <ExternalLink className="h-3 w-3" />
-                        </Link>
+
+                      <div className="flex items-center justify-between pt-3 border-t border-white/5 text-xs">
+                        <div>
+                          <span className="text-slate-400">Tiers: </span>
+                          <span className="font-bold text-white">
+                            {evt.minPrice} - {evt.maxPrice} ETB
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Link
+                            href={`/gate`}
+                            className="flex items-center gap-1 font-semibold text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded-lg border border-slate-700 transition"
+                          >
+                            <QrCode className="h-3.5 w-3.5 text-amber-400" />
+                            Gate Scanner
+                          </Link>
+                          <Link
+                            href={`/events/${evt.slug}`}
+                            className="flex items-center gap-1 font-semibold text-amber-400 hover:text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 px-3 py-1.5 rounded-lg border border-amber-500/30 transition"
+                          >
+                            View Page
+                            <ExternalLink className="h-3 w-3" />
+                          </Link>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TAB 2: Settlements & Payout Ledger */}
+          {dashboardTab === 'settlements' && (
+            <div className="space-y-6 animate-fadeIn">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                    <CreditCard className="h-5 w-5 text-amber-400" />
+                    Direct Bank Settlements & Disbursements
+                  </h2>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Net 95% ticket revenue disbursements to {profile?.bankName} ({profile?.bankAccountNo})
+                  </p>
+                </div>
               </div>
-            )}
-          </div>
+
+              {/* Settlements Table */}
+              <div className="rounded-2xl border border-white/10 bg-slate-900/60 overflow-hidden shadow-xl">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-slate-800/80 text-[11px] uppercase tracking-wider text-slate-400 border-b border-white/10">
+                      <tr>
+                        <th className="px-5 py-3.5 font-bold">Event</th>
+                        <th className="px-5 py-3.5 font-bold">Bank Account</th>
+                        <th className="px-5 py-3.5 font-bold text-right">Gross Sales</th>
+                        <th className="px-5 py-3.5 font-bold text-right">Platform Fee (5%)</th>
+                        <th className="px-5 py-3.5 font-bold text-right">Net Payout</th>
+                        <th className="px-5 py-3.5 font-bold text-center">Status</th>
+                        <th className="px-5 py-3.5 font-bold text-right">Payout Ref</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/5">
+                      {settlements.length === 0 ? (
+                        <tr>
+                          <td colSpan={7} className="px-5 py-12 text-center text-slate-500">
+                            No settlement disbursements recorded yet. Payout batches are generated once event ticket sales conclude.
+                          </td>
+                        </tr>
+                      ) : (
+                        settlements.map((st) => (
+                          <tr key={st.id} className="hover:bg-slate-800/40 transition">
+                            <td className="px-5 py-4 font-bold text-white">
+                              {st.eventTitle}
+                            </td>
+                            <td className="px-5 py-4 text-slate-300">
+                              <p className="font-semibold">{st.bankName}</p>
+                              <p className="font-mono text-slate-400 text-[11px]">{st.bankAccountNo}</p>
+                            </td>
+                            <td className="px-5 py-4 text-right font-mono text-slate-300">
+                              {st.totalGrossRevenue.toLocaleString()} ETB
+                            </td>
+                            <td className="px-5 py-4 text-right font-mono text-emerald-400">
+                              - {st.platformCommissionFee.toLocaleString()} ETB
+                            </td>
+                            <td className="px-5 py-4 text-right font-mono font-black text-amber-400 text-sm">
+                              {st.payoutAmount.toLocaleString()} ETB
+                            </td>
+                            <td className="px-5 py-4 text-center">
+                              <span
+                                className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                                  st.status === 'COMPLETED'
+                                    ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-500/40'
+                                    : 'bg-amber-950/80 text-amber-300 border border-amber-500/40'
+                                }`}
+                              >
+                                {st.status}
+                              </span>
+                            </td>
+                            <td className="px-5 py-4 text-right font-mono text-slate-400 text-[11px]">
+                              {st.payoutReference ? (
+                                <span className="text-amber-300 bg-black/40 px-2 py-0.5 rounded border border-amber-500/20">
+                                  {st.payoutReference}
+                                </span>
+                              ) : (
+                                'Pending Generation'
+                              )}
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     );

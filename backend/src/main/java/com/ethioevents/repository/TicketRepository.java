@@ -23,4 +23,5 @@ public interface TicketRepository extends JpaRepository<Ticket, UUID> {
     List<Ticket> findManifestForGate(@Param("eventId") UUID eventId, @Param("since") Instant since);
 
     long countByEventIdAndStatus(UUID eventId, TicketStatus status);
+    long countByEventId(UUID eventId);
 }

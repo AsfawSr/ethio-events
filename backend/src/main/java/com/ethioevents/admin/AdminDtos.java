@@ -60,4 +60,16 @@ public class AdminDtos {
             long totalEventsCount,
             Instant createdAt
     ) {}
+
+    public record SmsLogDto(
+            UUID id,
+            String phoneNumber,
+            String messageType,
+            String provider,
+            String status,
+            String content,
+            String externalMessageId,
+            String errorMessage,
+            Instant createdAt
+    ) {}
 }

@@ -188,4 +188,37 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ eventId, checkIns }),
     }),
+
+  // Admin SMS & Notifications Monitoring
+  getAdminSmsLogs: (phone?: string) =>
+    fetchApi<import('./types').SmsLogItem[]>(`/admin/sms/logs${phone ? `?phone=${encodeURIComponent(phone)}` : ''}`),
+
+  retryAdminSms: (id: string) =>
+    fetchApi<import('./types').SmsLogItem>(`/admin/sms/retry/${id}`, {
+      method: 'POST',
+    }),
+
+  // Settlements & Organizer Payouts
+  getAdminSettlements: () =>
+    fetchApi<import('./types').SettlementSummaryItem[]>('/admin/settlements'),
+
+  calculateAdminSettlement: (eventId: string) =>
+    fetchApi<import('./types').SettlementCalculation>(`/admin/settlements/calculate/${eventId}`),
+
+  generateAdminSettlement: (eventId: string) =>
+    fetchApi<import('./types').SettlementSummaryItem>(`/admin/settlements/generate/${eventId}`, {
+      method: 'POST',
+    }),
+
+  processAdminPayout: (
+    settlementId: string,
+    data?: { payoutMethod?: string; payoutReference?: string; notifyOrganizerBySms?: boolean }
+  ) =>
+    fetchApi<import('./types').SettlementSummaryItem>(`/admin/settlements/${settlementId}/process-payout`, {
+      method: 'POST',
+      body: JSON.stringify(data || { notifyOrganizerBySms: true }),
+    }),
+
+  getOrganizerSettlements: () =>
+    fetchApi<import('./types').SettlementSummaryItem[]>('/organizer/settlements'),
 };

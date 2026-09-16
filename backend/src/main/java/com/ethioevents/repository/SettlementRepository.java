@@ -9,6 +9,8 @@ import java.util.UUID;
 
 @Repository
 public interface SettlementRepository extends JpaRepository<Settlement, UUID> {
-    List<Settlement> findByOrganizerId(UUID organizerId);
+    List<Settlement> findByOrganizerIdOrderByCreatedAtDesc(UUID organizerId);
     List<Settlement> findByEventId(UUID eventId);
+    List<Settlement> findByOrderByCreatedAtDesc();
+    boolean existsByEventId(UUID eventId);
 }
