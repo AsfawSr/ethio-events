@@ -102,12 +102,14 @@ export default function ReservationModal({
     setLoading(true);
     setError(null);
     try {
+      const storedRef = typeof window !== 'undefined' ? sessionStorage.getItem('ethioevents_ref') : null;
       const res = await api.reserveGuestOrder({
         ticketTypeId: selectedTier.id,
         quantity,
         customerPhone: customerPhone.trim(),
         customerName: customerName.trim(),
         promoCode: promoResult && promoResult.valid ? promoResult.code : undefined,
+        affiliateCode: storedRef || undefined,
       });
       setReservation(res);
     } catch (err: any) {

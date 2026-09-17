@@ -45,6 +45,9 @@ public class Order {
     @Column(name = "reserved_until_utc", nullable = false)
     private Instant reservedUntilUtc;
 
+    @Column(name = "affiliate_code", length = 50)
+    private String affiliateCode;
+
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     private List<OrderItem> items = new ArrayList<>();
 
@@ -82,6 +85,8 @@ public class Order {
     public void setStatus(OrderStatus status) { this.status = status; }
     public Instant getReservedUntilUtc() { return reservedUntilUtc; }
     public void setReservedUntilUtc(Instant reservedUntilUtc) { this.reservedUntilUtc = reservedUntilUtc; }
+    public String getAffiliateCode() { return affiliateCode; }
+    public void setAffiliateCode(String affiliateCode) { this.affiliateCode = affiliateCode; }
     public List<OrderItem> getItems() { return items; }
     public void setItems(List<OrderItem> items) { this.items = items; }
     public Instant getCreatedAt() { return createdAt; }

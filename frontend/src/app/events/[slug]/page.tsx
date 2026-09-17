@@ -38,6 +38,17 @@ export default function EventDetailPage() {
         if (data.ticketTypes.length > 0) {
           setSelectedTier(data.ticketTypes[0]);
         }
+
+        // Track affiliate promoter click if ref query param is present
+        if (typeof window !== 'undefined') {
+          const urlParams = new URLSearchParams(window.location.search);
+          const ref = urlParams.get('ref');
+          if (ref) {
+            const cleanRef = ref.trim().toLowerCase();
+            sessionStorage.setItem('ethioevents_ref', cleanRef);
+            api.trackAffiliateClick(cleanRef, data.id).catch(() => {});
+          }
+        }
       } catch (err) {
         console.warn('Backend detail fallback');
         // Mock fallback for immediate seamless preview

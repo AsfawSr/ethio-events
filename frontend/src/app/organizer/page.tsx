@@ -31,11 +31,12 @@ import {
   Loader2,
   Key,
   Shield,
-  Copy
+  Copy,
+  Users
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { authStorage } from '@/lib/auth';
-import { OrganizerProfile, OrganizerSession, EventSummary, SettlementSummaryItem, CheckInLiveEvent, GateLiveStats, PromoCodeItem, GateCrewPinItem } from '@/lib/types';
+import { OrganizerProfile, OrganizerSession, EventSummary, SettlementSummaryItem, CheckInLiveEvent, GateLiveStats, PromoCodeItem, GateCrewPinItem, AffiliateItem } from '@/lib/types';
 
 const ETHIOPIAN_BANKS = [
   'Commercial Bank of Ethiopia (CBE)',
@@ -55,7 +56,8 @@ export default function OrganizerPortalPage() {
   const [myEvents, setMyEvents] = useState<EventSummary[]>([]);
   const [settlements, setSettlements] = useState<SettlementSummaryItem[]>([]);
   const [promos, setPromos] = useState<PromoCodeItem[]>([]);
-  const [dashboardTab, setDashboardTab] = useState<'events' | 'settlements' | 'livegate' | 'promos'>('events');
+  const [affiliates, setAffiliates] = useState<AffiliateItem[]>([]);
+  const [dashboardTab, setDashboardTab] = useState<'events' | 'settlements' | 'livegate' | 'promos' | 'affiliates'>('events');
   const [loading, setLoading] = useState(true);
 
   // Promo Code Form Modal
@@ -88,6 +90,22 @@ export default function OrganizerPortalPage() {
   const [crewPinCreating, setCrewPinCreating] = useState(false);
   const [crewPinError, setCrewPinError] = useState<string | null>(null);
   const [copiedPin, setCopiedPin] = useState<string | null>(null);
+
+  // Promoter / Affiliate Management State
+  const [showAffiliateModal, setShowAffiliateModal] = useState(false);
+  const [affiliateForm, setAffiliateForm] = useState({
+    promoterName: '',
+    phoneNumber: '',
+    email: '',
+    affiliateCode: '',
+    commissionRate: 5,
+    bankName: ETHIOPIAN_BANKS[0],
+    bankAccountNo: '',
+    bankAccountName: '',
+  });
+  const [affiliateCreating, setAffiliateCreating] = useState(false);
+  const [affiliateError, setAffiliateError] = useState<string | null>(null);
+  const [copiedAffiliateLink, setCopiedAffiliateLink] = useState<string | null>(null);
 
   // Auth Tabs (unauthenticated state)
   const [activeTab, setActiveTab] = useState<'login' | 'register'>('login');
@@ -139,16 +157,18 @@ export default function OrganizerPortalPage() {
   const loadDashboardData = async () => {
     try {
       setLoading(true);
-      const [prof, events, stl, prm] = await Promise.all([
+      const [prof, events, stl, prm, affs] = await Promise.all([
         api.getOrganizerProfile(),
         api.getOrganizerEvents().catch(() => []),
         api.getOrganizerSettlements().catch(() => []),
         api.getAllPromoCodes().catch(() => []),
+        api.getOrganizerAffiliates().catch(() => []),
       ]);
       setProfile(prof);
       setMyEvents(events);
       setSettlements(stl);
       setPromos(prm);
+      setAffiliates(affs);
       if (events.length > 0) {
         setSelectedLiveEventId((prev) => prev || events[0].id);
       }
@@ -160,6 +180,7 @@ export default function OrganizerPortalPage() {
       setMyEvents([]);
       setSettlements([]);
       setPromos([]);
+      setAffiliates([]);
     } finally {
       setLoading(false);
     }
@@ -445,6 +466,45 @@ export default function OrganizerPortalPage() {
     }
   };
 
+  // Handle Create Promoter Affiliate
+  const handleCreateAffiliate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAffiliateError(null);
+    if (!affiliateForm.promoterName.trim() || !affiliateForm.phoneNumber.trim() || !affiliateForm.affiliateCode.trim()) {
+      setAffiliateError('Please complete all required fields');
+      return;
+    }
+    try {
+      setAffiliateCreating(true);
+      const created = await api.createOrganizerAffiliate({
+        promoterName: affiliateForm.promoterName.trim(),
+        phoneNumber: affiliateForm.phoneNumber.trim(),
+        email: affiliateForm.email.trim() || undefined,
+        affiliateCode: affiliateForm.affiliateCode.trim().toLowerCase(),
+        commissionRate: Number(affiliateForm.commissionRate) || 5,
+        bankName: affiliateForm.bankName,
+        bankAccountNo: affiliateForm.bankAccountNo.trim() || undefined,
+        bankAccountName: affiliateForm.bankAccountName.trim() || affiliateForm.promoterName.trim(),
+      });
+      setAffiliates((prev) => [created, ...prev]);
+      setShowAffiliateModal(false);
+      setAffiliateForm({
+        promoterName: '',
+        phoneNumber: '',
+        email: '',
+        affiliateCode: '',
+        commissionRate: 5,
+        bankName: ETHIOPIAN_BANKS[0],
+        bankAccountNo: '',
+        bankAccountName: '',
+      });
+    } catch (err: any) {
+      setAffiliateError(err.message || 'Failed to generate promoter affiliate link');
+    } finally {
+      setAffiliateCreating(false);
+    }
+  };
+
   // If loading session
   if (loading && session) {
     return (
@@ -618,6 +678,18 @@ export default function OrganizerPortalPage() {
             >
               <Tag className="h-4 w-4" />
               Promo Codes ({promos.length})
+            </button>
+
+            <button
+              onClick={() => setDashboardTab('affiliates')}
+              className={`px-4 py-2 rounded-xl text-sm font-bold transition flex items-center gap-2 ${
+                dashboardTab === 'affiliates'
+                  ? 'bg-amber-500 text-black shadow-glowGold'
+                  : 'text-slate-400 hover:text-white bg-slate-900/60 hover:bg-slate-800'
+              }`}
+            >
+              <Users className="h-4 w-4" />
+              Promoters & Affiliates ({affiliates.length})
             </button>
           </div>
 
@@ -1176,6 +1248,151 @@ export default function OrganizerPortalPage() {
               </div>
             </div>
           )}
+
+          {/* TAB 5: Promoters & Influencer Affiliates Section */}
+          {dashboardTab === 'affiliates' && (
+            <div className="space-y-6 animate-fadeIn">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                    <Users className="h-5 w-5 text-amber-400" />
+                    Promoter & Influencer Referral Links
+                  </h2>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Partner with Telegram channel admins, TikTok creators, and campus ambassadors with tracked commission splits.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2.5">
+                  <Link
+                    href="/promoters"
+                    target="_blank"
+                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 px-3.5 py-2 rounded-xl border border-slate-700 transition"
+                  >
+                    <ExternalLink className="h-3.5 w-3.5 text-amber-400" />
+                    Promoter Hub Portal
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => setShowAffiliateModal(true)}
+                    className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-amber-400 via-amber-300 to-yellow-400 px-4 py-2 text-xs font-bold text-black shadow-glowGold hover:from-amber-300 transition w-fit"
+                  >
+                    <Plus className="h-4 w-4 text-black" />
+                    Create Influencer Code
+                  </button>
+                </div>
+              </div>
+
+              {/* Affiliate Summary KPIs */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="p-5 rounded-2xl bg-slate-900/40 border border-white/10">
+                  <span className="text-xs font-bold uppercase text-slate-400">Total Partners</span>
+                  <div className="text-2xl font-black text-white mt-1">
+                    {affiliates.length}
+                  </div>
+                  <p className="text-[11px] text-amber-400 mt-1">Active promoters tracking sales</p>
+                </div>
+
+                <div className="p-5 rounded-2xl bg-slate-900/40 border border-white/10">
+                  <span className="text-xs font-bold uppercase text-slate-400">Total Referral Sales Driven</span>
+                  <div className="text-2xl font-black text-emerald-400 mt-1 font-mono">
+                    {affiliates.reduce((acc, a) => acc + (a.totalSalesEtb || 0), 0).toLocaleString()} <span className="text-xs text-emerald-300">ETB</span>
+                  </div>
+                  <p className="text-[11px] text-slate-400 mt-1">
+                    {affiliates.reduce((acc, a) => acc + (a.totalConversions || 0), 0)} tickets referred
+                  </p>
+                </div>
+
+                <div className="p-5 rounded-2xl bg-slate-900/40 border border-white/10">
+                  <span className="text-xs font-bold uppercase text-slate-400">Total Commission Accrued</span>
+                  <div className="text-2xl font-black text-indigo-400 mt-1 font-mono">
+                    {affiliates.reduce((acc, a) => acc + (a.totalCommissionEtb || 0), 0).toLocaleString()} <span className="text-xs text-indigo-300">ETB</span>
+                  </div>
+                  <p className="text-[11px] text-slate-400 mt-1">Calculated automatically on orders</p>
+                </div>
+              </div>
+
+              {/* Affiliates Table */}
+              <div className="rounded-2xl border border-white/10 bg-slate-900/60 overflow-hidden shadow-xl">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-slate-800/80 text-[11px] uppercase tracking-wider text-slate-400 border-b border-white/10">
+                      <tr>
+                        <th className="px-5 py-3.5 font-bold">Promoter / Channel</th>
+                        <th className="px-5 py-3.5 font-bold">Referral Tag</th>
+                        <th className="px-5 py-3.5 font-bold text-center">Rate</th>
+                        <th className="px-5 py-3.5 font-bold text-center">Clicks</th>
+                        <th className="px-5 py-3.5 font-bold text-center">Orders</th>
+                        <th className="px-5 py-3.5 font-bold text-right">Sales Driven</th>
+                        <th className="px-5 py-3.5 font-bold text-right">Commission</th>
+                        <th className="px-5 py-3.5 font-bold text-center">Link</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/5">
+                      {affiliates.length === 0 ? (
+                        <tr>
+                          <td colSpan={8} className="px-5 py-12 text-center text-slate-500">
+                            No promoter affiliate codes created yet. Click "Create Influencer Code" to start collaborating with promoters.
+                          </td>
+                        </tr>
+                      ) : (
+                        affiliates.map((aff) => {
+                          const hostUrl = typeof window !== 'undefined' ? window.location.origin : 'https://ethioevents.et';
+                          const linkUrl = `${hostUrl}/?ref=${aff.affiliateCode}`;
+                          return (
+                            <tr key={aff.id} className="hover:bg-slate-800/40 transition">
+                              <td className="px-5 py-4">
+                                <p className="font-bold text-white">{aff.promoterName}</p>
+                                <p className="text-[11px] text-slate-400">{aff.phoneNumber}</p>
+                              </td>
+                              <td className="px-5 py-4">
+                                <span className="inline-flex items-center gap-1 font-mono font-bold text-amber-400 bg-amber-500/10 border border-amber-500/25 px-2.5 py-1 rounded-lg text-xs">
+                                  @{aff.affiliateCode}
+                                </span>
+                              </td>
+                              <td className="px-5 py-4 text-center font-bold text-emerald-400">
+                                {aff.commissionRate}%
+                              </td>
+                              <td className="px-5 py-4 text-center font-mono text-slate-300">
+                                {aff.totalClicks}
+                              </td>
+                              <td className="px-5 py-4 text-center font-mono font-bold text-white">
+                                {aff.totalConversions}
+                              </td>
+                              <td className="px-5 py-4 text-right font-mono text-slate-300">
+                                {aff.totalSalesEtb.toLocaleString()} ETB
+                              </td>
+                              <td className="px-5 py-4 text-right font-mono font-black text-amber-400">
+                                {aff.totalCommissionEtb.toLocaleString()} ETB
+                              </td>
+                              <td className="px-5 py-4 text-center">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    navigator.clipboard.writeText(linkUrl);
+                                    setCopiedAffiliateLink(aff.id);
+                                    setTimeout(() => setCopiedAffiliateLink(null), 2000);
+                                  }}
+                                  className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 px-2.5 py-1 rounded-lg border border-slate-700 transition"
+                                  title="Copy Tracking Link"
+                                >
+                                  {copiedAffiliateLink === aff.id ? (
+                                    <CheckCircle2 className="h-3 w-3 text-emerald-400" />
+                                  ) : (
+                                    <Copy className="h-3 w-3" />
+                                  )}
+                                  <span>{copiedAffiliateLink === aff.id ? 'Copied' : 'Link'}</span>
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Modal: Create Promo Code */}
@@ -1433,6 +1650,165 @@ export default function OrganizerPortalPage() {
                       <>
                         <Key className="h-4 w-4 text-black" />
                         Generate 6-Digit PIN
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Modal: Create Influencer / Promoter Affiliate Link */}
+        {showAffiliateModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fadeIn">
+            <div className="relative w-full max-w-lg rounded-2xl border border-white/10 bg-slate-900 p-6 shadow-2xl space-y-5">
+              <div className="flex items-center justify-between border-b border-white/10 pb-4">
+                <div className="flex items-center gap-2.5">
+                  <div className="h-9 w-9 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
+                    <Users className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-white">Create Influencer Tracking Code</h3>
+                    <p className="text-xs text-slate-400">Partner with promoters and configure custom commission splits</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowAffiliateModal(false)}
+                  className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              {affiliateError && (
+                <div className="flex items-center gap-2 rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-rose-300 text-xs">
+                  <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                  <span>{affiliateError}</span>
+                </div>
+              )}
+
+              <form onSubmit={handleCreateAffiliate} className="space-y-4 text-xs">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-slate-300 font-bold mb-1.5">
+                      Promoter / Influencer Name *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. Tikvah Ethiopia or DJ Rody"
+                      value={affiliateForm.promoterName}
+                      onChange={(e) => setAffiliateForm({ ...affiliateForm, promoterName: e.target.value })}
+                      className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-white font-semibold focus:outline-none focus:border-amber-400 placeholder:text-slate-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-slate-300 font-bold mb-1.5">
+                      Referral Code (Tag) *
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-2.5 text-slate-500 font-mono font-bold">@</span>
+                      <input
+                        type="text"
+                        required
+                        placeholder="tikvahethiopia"
+                        value={affiliateForm.affiliateCode}
+                        onChange={(e) => setAffiliateForm({ ...affiliateForm, affiliateCode: e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, '') })}
+                        className="w-full bg-slate-800 border border-slate-700 rounded-xl pl-7 pr-3 py-2.5 text-white font-mono font-bold focus:outline-none focus:border-amber-400 placeholder:text-slate-500"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-slate-300 font-bold mb-1.5">
+                      Promoter Phone Number *
+                    </label>
+                    <input
+                      type="tel"
+                      required
+                      placeholder="0911223344"
+                      value={affiliateForm.phoneNumber}
+                      onChange={(e) => setAffiliateForm({ ...affiliateForm, phoneNumber: e.target.value })}
+                      className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-white font-semibold focus:outline-none focus:border-amber-400 placeholder:text-slate-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-slate-300 font-bold mb-1.5">
+                      Commission Rate (%) *
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        min="1"
+                        max="50"
+                        required
+                        value={affiliateForm.commissionRate}
+                        onChange={(e) => setAffiliateForm({ ...affiliateForm, commissionRate: parseFloat(e.target.value) || 5 })}
+                        className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-white font-bold focus:outline-none focus:border-amber-400"
+                      />
+                      <span className="absolute right-3 top-2.5 text-slate-400 font-bold">%</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 border-t border-white/10 pt-3">
+                  <div>
+                    <label className="block text-slate-300 font-bold mb-1.5">
+                      Payout Method
+                    </label>
+                    <select
+                      value={affiliateForm.bankName}
+                      onChange={(e) => setAffiliateForm({ ...affiliateForm, bankName: e.target.value })}
+                      className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-white font-semibold focus:outline-none focus:border-amber-400"
+                    >
+                      {ETHIOPIAN_BANKS.map((b) => (
+                        <option key={b} value={b}>{b}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-slate-300 font-bold mb-1.5">
+                      Bank / Telebirr Account No
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="1000123456789"
+                      value={affiliateForm.bankAccountNo}
+                      onChange={(e) => setAffiliateForm({ ...affiliateForm, bankAccountNo: e.target.value })}
+                      className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-white font-mono focus:outline-none focus:border-amber-400 placeholder:text-slate-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="pt-3 border-t border-white/10 flex items-center justify-end gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => setShowAffiliateModal(false)}
+                    className="px-4 py-2 rounded-xl text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 font-bold transition"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={affiliateCreating}
+                    className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-amber-400 via-amber-300 to-yellow-400 px-5 py-2 text-xs font-bold text-black shadow-glowGold hover:from-amber-300 hover:to-yellow-300 transition disabled:opacity-50"
+                  >
+                    {affiliateCreating ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin text-black" />
+                        Generating Link...
+                      </>
+                    ) : (
+                      <>
+                        <Users className="h-4 w-4 text-black" />
+                        Save & Generate Tracking Link
                       </>
                     )}
                   </button>

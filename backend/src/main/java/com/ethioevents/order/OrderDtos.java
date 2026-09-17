@@ -24,10 +24,16 @@ public class OrderDtos {
             @NotBlank(message = "Customer full name is required")
             String customerName,
 
-            String promoCode
+            String promoCode,
+
+            String affiliateCode
     ) {
         public GuestReserveRequest(UUID ticketTypeId, int quantity, String customerPhone, String customerName) {
-            this(ticketTypeId, quantity, customerPhone, customerName, null);
+            this(ticketTypeId, quantity, customerPhone, customerName, null, null);
+        }
+
+        public GuestReserveRequest(UUID ticketTypeId, int quantity, String customerPhone, String customerName, String promoCode) {
+            this(ticketTypeId, quantity, customerPhone, customerName, promoCode, null);
         }
     }
 

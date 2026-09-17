@@ -324,5 +324,29 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ pinCode, eventId }),
     }),
+
+  // Promoter & Influencer Affiliate Engine
+  trackAffiliateClick: (code: string, eventId?: string) =>
+    fetchApi<import('./types').TrackClickResult>(`/affiliates/track?code=${encodeURIComponent(code)}${eventId ? `&eventId=${eventId}` : ''}`, {
+      method: 'POST',
+    }),
+
+  registerAffiliate: (data: any) =>
+    fetchApi<import('./types').AffiliateItem>('/affiliates/register', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  getAffiliateDashboard: (identifier: string) =>
+    fetchApi<import('./types').AffiliateDashboardData>(`/affiliates/portal/${encodeURIComponent(identifier)}`),
+
+  getOrganizerAffiliates: () =>
+    fetchApi<import('./types').AffiliateItem[]>('/affiliates/organizer'),
+
+  createOrganizerAffiliate: (data: any) =>
+    fetchApi<import('./types').AffiliateItem>('/affiliates/organizer/create', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
 };
 
