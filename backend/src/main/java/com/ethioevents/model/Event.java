@@ -47,17 +47,17 @@ public class Event {
     private EventStatus status = EventStatus.PUBLISHED;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "category", length = 50, columnDefinition = "varchar(50) default 'MUSIC_CONCERT'")
+    @Column(name = "category", length = 50, nullable = true, columnDefinition = "varchar(50) default 'MUSIC_CONCERT'")
     private EventCategory category = EventCategory.MUSIC_CONCERT;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "neighborhood", length = 50, columnDefinition = "varchar(50) default 'BOLE'")
+    @Column(name = "neighborhood", length = 50, nullable = true, columnDefinition = "varchar(50) default 'BOLE'")
     private Neighborhood neighborhood = Neighborhood.BOLE;
 
-    @Column(name = "featured", columnDefinition = "boolean default false")
-    private boolean featured = false;
+    @Column(name = "featured", nullable = true, columnDefinition = "boolean default false")
+    private Boolean featured = false;
 
-    @Column(name = "tags", length = 255, columnDefinition = "varchar(255) default ''")
+    @Column(name = "tags", length = 255, nullable = true, columnDefinition = "varchar(255) default ''")
     private String tags = "";
 
     @OneToMany(mappedBy = "event", cascade = CascadeType.ALL, orphanRemoval = true)
@@ -103,8 +103,10 @@ public class Event {
     public void setCategory(EventCategory category) { this.category = category; }
     public Neighborhood getNeighborhood() { return neighborhood != null ? neighborhood : Neighborhood.BOLE; }
     public void setNeighborhood(Neighborhood neighborhood) { this.neighborhood = neighborhood; }
-    public boolean isFeatured() { return featured; }
+    public boolean isFeatured() { return Boolean.TRUE.equals(featured); }
+    public Boolean getFeatured() { return Boolean.TRUE.equals(featured); }
     public void setFeatured(boolean featured) { this.featured = featured; }
+    public void setFeatured(Boolean featured) { this.featured = Boolean.TRUE.equals(featured); }
     public String getTags() { return tags != null ? tags : ""; }
     public void setTags(String tags) { this.tags = tags; }
     public List<TicketType> getTicketTypes() { return ticketTypes; }
