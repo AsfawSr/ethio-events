@@ -123,6 +123,10 @@ public class GateLiveStreamService {
                             .data(System.currentTimeMillis()));
                 } catch (Exception e) {
                     dead.add(emitter);
+                    try {
+                        emitter.complete();
+                    } catch (Exception ignored) {
+                    }
                 }
             }
             if (!dead.isEmpty()) {
