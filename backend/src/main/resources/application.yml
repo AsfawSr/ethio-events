@@ -67,8 +67,13 @@ ethioevents:
     base-url: "https://api.chapa.co/v1"
     webhook-secret: "demo-chapa-webhook-secret"
   sms:
-    provider: ${ETHIOEVENTS_SMS_PROVIDER:MOCK} # MOCK | ETHIO_TELECOM | AFRICASTALKING | TWILIO
+    provider: ${ETHIOEVENTS_SMS_PROVIDER:MOCK} # MOCK | AFROMESSAGE | ETHIO_TELECOM | AFRICASTALKING | TWILIO
     mock-auto-verify: false
+    afromessage:
+      token: ${AFROMESSAGE_TOKEN:demo_afromessage_token}
+      sender-id: ${AFROMESSAGE_SENDER_ID:EthioEvents}
+      identifier-id: ${AFROMESSAGE_IDENTIFIER_ID:} # Optional sender identifier ID from AfroMessage portal
+      api-url: ${AFROMESSAGE_API_URL:https://api.afromessage.com/api/send}
     ethio-telecom:
       api-url: ${ETHIO_TELECOM_SMS_URL:https://sms.ethiotelecom.et/api/v1/messages}
       api-key: ${ETHIO_TELECOM_SMS_KEY:ET_SMS_DEMO_KEY}
