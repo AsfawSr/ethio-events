@@ -32,11 +32,17 @@ import {
   Key,
   Shield,
   Copy,
-  Users
+  Users,
+  FileSpreadsheet,
+  Download,
+  BarChart3,
+  PieChart,
+  FileText,
+  RefreshCw
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { authStorage } from '@/lib/auth';
-import { OrganizerProfile, OrganizerSession, EventSummary, SettlementSummaryItem, CheckInLiveEvent, GateLiveStats, PromoCodeItem, GateCrewPinItem, AffiliateItem } from '@/lib/types';
+import { OrganizerProfile, OrganizerSession, EventSummary, SettlementSummaryItem, CheckInLiveEvent, GateLiveStats, PromoCodeItem, GateCrewPinItem, AffiliateItem, EventAnalyticsSummary } from '@/lib/types';
 
 const ETHIOPIAN_BANKS = [
   'Commercial Bank of Ethiopia (CBE)',
@@ -57,8 +63,40 @@ export default function OrganizerPortalPage() {
   const [settlements, setSettlements] = useState<SettlementSummaryItem[]>([]);
   const [promos, setPromos] = useState<PromoCodeItem[]>([]);
   const [affiliates, setAffiliates] = useState<AffiliateItem[]>([]);
-  const [dashboardTab, setDashboardTab] = useState<'events' | 'settlements' | 'livegate' | 'promos' | 'affiliates'>('events');
+  const [dashboardTab, setDashboardTab] = useState<'events' | 'settlements' | 'livegate' | 'promos' | 'affiliates' | 'reports'>('events');
   const [loading, setLoading] = useState(true);
+
+  // Reports & Financial Analytics State
+  const [selectedReportEventId, setSelectedReportEventId] = useState<string>('');
+  const [analyticsData, setAnalyticsData] = useState<EventAnalyticsSummary | null>(null);
+  const [analyticsLoading, setAnalyticsLoading] = useState(false);
+  const [analyticsError, setAnalyticsError] = useState<string | null>(null);
+
+  const loadEventAnalytics = async (eventId: string) => {
+    if (!eventId) return;
+    setAnalyticsLoading(true);
+    setAnalyticsError(null);
+    try {
+      const data = await api.getEventAnalytics(eventId);
+      setAnalyticsData(data);
+    } catch (err: any) {
+      setAnalyticsError(err.message || 'Failed to load event analytics');
+    } finally {
+      setAnalyticsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (selectedReportEventId) {
+      loadEventAnalytics(selectedReportEventId);
+    }
+  }, [selectedReportEventId]);
+
+  useEffect(() => {
+    if (myEvents.length > 0 && !selectedReportEventId) {
+      setSelectedReportEventId(myEvents[0].id);
+    }
+  }, [myEvents]);
 
   // Promo Code Form Modal
   const [showPromoModal, setShowPromoModal] = useState(false);
@@ -690,6 +728,18 @@ export default function OrganizerPortalPage() {
             >
               <Users className="h-4 w-4" />
               Promoters & Affiliates ({affiliates.length})
+            </button>
+
+            <button
+              onClick={() => setDashboardTab('reports')}
+              className={`px-4 py-2 rounded-xl text-sm font-bold transition flex items-center gap-2 ${
+                dashboardTab === 'reports'
+                  ? 'bg-amber-500 text-black shadow-glowGold'
+                  : 'text-slate-400 hover:text-white bg-slate-900/60 hover:bg-slate-800'
+              }`}
+            >
+              <FileSpreadsheet className="h-4 w-4" />
+              Reports & Financials
             </button>
           </div>
 
@@ -1391,6 +1441,317 @@ export default function OrganizerPortalPage() {
                   </table>
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* TAB 6: Reports & Financial Analytics (ሪፖርቶችና የገንዘብ ሂሳብ) */}
+          {dashboardTab === 'reports' && (
+            <div className="space-y-6 animate-fadeIn">
+              {/* Event Selector & Export Bar */}
+              <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400 flex-shrink-0">
+                    <FileSpreadsheet className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-white">Event Financial Analytics & Turnstile Reports</h3>
+                    <p className="text-xs text-slate-400">Select an event to inspect revenue breakdown, attendance velocity & export CSVs</p>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2.5">
+                  <select
+                    value={selectedReportEventId}
+                    onChange={(e) => setSelectedReportEventId(e.target.value)}
+                    className="bg-slate-800 border border-slate-700 text-white text-xs font-semibold rounded-xl px-3.5 py-2.5 focus:outline-none focus:border-amber-400"
+                  >
+                    {myEvents.map((ev) => (
+                      <option key={ev.id} value={ev.id}>
+                        {ev.title} ({ev.venueName})
+                      </option>
+                    ))}
+                  </select>
+
+                  <button
+                    type="button"
+                    onClick={() => selectedReportEventId && loadEventAnalytics(selectedReportEventId)}
+                    disabled={analyticsLoading || !selectedReportEventId}
+                    className="inline-flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white px-3 py-2.5 rounded-xl border border-slate-700 text-xs font-semibold transition"
+                    title="Refresh analytics data"
+                  >
+                    <RefreshCw className={`h-3.5 w-3.5 ${analyticsLoading ? 'animate-spin' : ''}`} />
+                    <span>Refresh</span>
+                  </button>
+
+                  {selectedReportEventId && (
+                    <>
+                      <a
+                        href={api.getAttendeeCsvUrl(selectedReportEventId)}
+                        download={`EthioEvents-Attendees-${selectedReportEventId}.csv`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1.5 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 border border-emerald-500/30 px-3.5 py-2.5 rounded-xl text-xs font-bold transition shadow-sm"
+                      >
+                        <Download className="h-3.5 w-3.5" />
+                        <span>Attendee Manifest (CSV)</span>
+                      </a>
+
+                      <a
+                        href={api.getFinancialCsvUrl(selectedReportEventId)}
+                        download={`EthioEvents-Financials-${selectedReportEventId}.csv`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 border border-amber-500/30 px-3.5 py-2.5 rounded-xl text-xs font-bold transition shadow-sm"
+                      >
+                        <Download className="h-3.5 w-3.5" />
+                        <span>Financial Ledger (CSV)</span>
+                      </a>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {analyticsLoading ? (
+                <div className="rounded-2xl border border-white/10 bg-slate-900/40 p-12 text-center">
+                  <Loader2 className="mx-auto h-8 w-8 text-amber-400 animate-spin mb-3" />
+                  <p className="text-sm font-semibold text-slate-300">Generating event analytics & financial ledger...</p>
+                </div>
+              ) : analyticsError ? (
+                <div className="rounded-2xl border border-rose-500/20 bg-rose-500/10 p-6 text-center text-rose-300 text-sm">
+                  <AlertCircle className="mx-auto h-8 w-8 mb-2" />
+                  <p>{analyticsError}</p>
+                </div>
+              ) : analyticsData ? (
+                <div className="space-y-6">
+                  {/* Executive KPI Cards */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="rounded-2xl border border-white/10 bg-gradient-to-br from-slate-900/80 to-slate-900/40 p-5">
+                      <div className="flex items-center justify-between text-slate-400 mb-2">
+                        <span className="text-xs font-bold uppercase tracking-wider">Gross Sales</span>
+                        <DollarSign className="h-5 w-5 text-amber-400" />
+                      </div>
+                      <div className="text-2xl font-black text-amber-400">
+                        {analyticsData.grossRevenueEtb.toLocaleString()} <span className="text-xs text-slate-400 font-normal">ETB</span>
+                      </div>
+                      <p className="mt-1 text-[11px] text-slate-400">
+                        From {analyticsData.totalOrdersCount} completed orders
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl border border-white/10 bg-gradient-to-br from-slate-900/80 to-slate-900/40 p-5">
+                      <div className="flex items-center justify-between text-slate-400 mb-2">
+                        <span className="text-xs font-bold uppercase tracking-wider">Net Payout (95%)</span>
+                        <ShieldCheck className="h-5 w-5 text-emerald-400" />
+                      </div>
+                      <div className="text-2xl font-black text-emerald-400">
+                        {analyticsData.netOrganizerPayoutEtb.toLocaleString()} <span className="text-xs text-slate-400 font-normal">ETB</span>
+                      </div>
+                      <p className="mt-1 text-[11px] text-slate-400">
+                        Platform fee (5%): {analyticsData.platformCommissionEtb.toLocaleString()} ETB
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl border border-white/10 bg-gradient-to-br from-slate-900/80 to-slate-900/40 p-5">
+                      <div className="flex items-center justify-between text-slate-400 mb-2">
+                        <span className="text-xs font-bold uppercase tracking-wider">Gate Check-Ins</span>
+                        <UserCheck className="h-5 w-5 text-sky-400" />
+                      </div>
+                      <div className="text-2xl font-black text-sky-400">
+                        {analyticsData.totalCheckedIn} <span className="text-xs text-slate-400 font-normal">/ {analyticsData.totalTicketsIssued}</span>
+                      </div>
+                      <div className="mt-2 w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
+                        <div
+                          className="bg-sky-400 h-full rounded-full transition-all duration-500"
+                          style={{ width: `${Math.min(100, analyticsData.attendanceRatePercent)}%` }}
+                        />
+                      </div>
+                      <p className="mt-1 text-[11px] text-slate-400">
+                        {analyticsData.attendanceRatePercent}% attendance turnstile rate
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl border border-white/10 bg-gradient-to-br from-slate-900/80 to-slate-900/40 p-5">
+                      <div className="flex items-center justify-between text-slate-400 mb-2">
+                        <span className="text-xs font-bold uppercase tracking-wider">Avg Order Value</span>
+                        <TrendingUp className="h-5 w-5 text-indigo-400" />
+                      </div>
+                      <div className="text-2xl font-black text-indigo-400">
+                        {analyticsData.averageOrderValueEtb.toLocaleString()} <span className="text-xs text-slate-400 font-normal">ETB</span>
+                      </div>
+                      <p className="mt-1 text-[11px] text-slate-400">
+                        Per checkout session
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Two Column Layout: Turnstile Check-In Velocity & Payment Breakdown */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* Hourly Turnstile Influx Curve */}
+                    <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-5 space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Activity className="h-4 w-4 text-amber-400" />
+                          <h4 className="text-sm font-bold text-white">Hourly Turnstile Influx Curve</h4>
+                        </div>
+                        <span className="text-[11px] font-mono text-slate-400">Arrival Distribution</span>
+                      </div>
+
+                      <div className="space-y-3 pt-2">
+                        {analyticsData.hourlyCheckIns.map((slot, idx) => {
+                          const maxCount = Math.max(...analyticsData.hourlyCheckIns.map((s) => s.checkInCount), 1);
+                          const barWidth = Math.round((slot.checkInCount / maxCount) * 100);
+                          const isPeak = slot.checkInCount === maxCount && maxCount > 0;
+
+                          return (
+                            <div key={idx} className="space-y-1">
+                              <div className="flex items-center justify-between text-xs">
+                                <span className={`font-mono ${isPeak ? 'text-amber-400 font-bold' : 'text-slate-300'}`}>
+                                  {slot.hourSlot} {isPeak && <span className="text-[10px] uppercase font-bold bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded ml-1">Peak</span>}
+                                </span>
+                                <span className="font-mono text-slate-400">
+                                  <strong className="text-white">{slot.checkInCount}</strong> scanned ({slot.cumulativePercent}% cum.)
+                                </span>
+                              </div>
+                              <div className="w-full bg-slate-800/80 rounded-full h-2.5 overflow-hidden">
+                                <div
+                                  className={`h-full rounded-full transition-all duration-500 ${
+                                    isPeak ? 'bg-gradient-to-r from-amber-500 to-yellow-300 shadow-glowGold' : 'bg-slate-500'
+                                  }`}
+                                  style={{ width: `${Math.max(4, barWidth)}%` }}
+                                />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Payment Gateway Breakdown */}
+                    <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-5 space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <CreditCard className="h-4 w-4 text-emerald-400" />
+                          <h4 className="text-sm font-bold text-white">Payment Method Market Share</h4>
+                        </div>
+                        <span className="text-[11px] font-mono text-slate-400">By Settlement Volume</span>
+                      </div>
+
+                      <div className="space-y-4 pt-2">
+                        {analyticsData.paymentBreakdown.map((pm, idx) => (
+                          <div key={idx} className="rounded-xl border border-white/5 bg-slate-800/40 p-3.5 space-y-2">
+                            <div className="flex items-center justify-between text-xs">
+                              <div className="flex items-center gap-2">
+                                <span className="font-bold text-white">{pm.gateway}</span>
+                                <span className="text-[10px] text-slate-400 font-mono">({pm.orderCount} orders)</span>
+                              </div>
+                              <div className="text-right font-mono">
+                                <span className="font-bold text-emerald-400">{pm.totalVolume.toLocaleString()} ETB</span>
+                                <span className="text-slate-400 text-[11px] ml-1.5">({pm.volumePercent}%)</span>
+                              </div>
+                            </div>
+                            <div className="w-full bg-slate-800 rounded-full h-2 overflow-hidden">
+                              <div
+                                className={`h-full rounded-full ${
+                                  pm.gateway.toLowerCase().includes('telebirr')
+                                    ? 'bg-sky-400'
+                                    : pm.gateway.toLowerCase().includes('chapa')
+                                    ? 'bg-emerald-400'
+                                    : 'bg-amber-400'
+                                }`}
+                                style={{ width: `${Math.max(2, pm.volumePercent)}%` }}
+                              />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Tier Breakdown & Promoter Leaderboard Grid */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* Ticket Tier Breakdown */}
+                    <div className="rounded-2xl border border-white/10 bg-slate-900/60 overflow-hidden">
+                      <div className="p-4 border-b border-white/10 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Ticket className="h-4 w-4 text-indigo-400" />
+                          <h4 className="text-sm font-bold text-white">Ticket Tier Revenue Breakdown</h4>
+                        </div>
+                        <span className="text-xs text-slate-400">{analyticsData.tierSales.length} Tiers</span>
+                      </div>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-left text-xs">
+                          <thead className="bg-slate-950/60 text-slate-400 uppercase text-[10px] font-bold tracking-wider">
+                            <tr>
+                              <th className="px-4 py-3">Tier Name</th>
+                              <th className="px-4 py-3 text-center">Sold / Capacity</th>
+                              <th className="px-4 py-3 text-right">Revenue</th>
+                              <th className="px-4 py-3 text-right">Share %</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-white/5">
+                            {analyticsData.tierSales.map((ts, idx) => (
+                              <tr key={idx} className="hover:bg-white/[0.02]">
+                                <td className="px-4 py-3 font-bold text-white">{ts.tierName}</td>
+                                <td className="px-4 py-3 text-center font-mono text-slate-300">
+                                  {ts.soldCount} <span className="text-slate-500">/ {ts.totalCapacity}</span>
+                                </td>
+                                <td className="px-4 py-3 text-right font-mono text-amber-400 font-semibold">
+                                  {ts.revenue.toLocaleString()} ETB
+                                </td>
+                                <td className="px-4 py-3 text-right font-mono text-slate-300">
+                                  {ts.percentOfTotal}%
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    {/* Promoter & Influencer Leaderboard */}
+                    <div className="rounded-2xl border border-white/10 bg-slate-900/60 overflow-hidden">
+                      <div className="p-4 border-b border-white/10 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Users className="h-4 w-4 text-amber-400" />
+                          <h4 className="text-sm font-bold text-white">Top Promoter Leaderboard</h4>
+                        </div>
+                        <span className="text-xs text-slate-400">{analyticsData.topPromoters.length} Affiliates</span>
+                      </div>
+
+                      {analyticsData.topPromoters.length === 0 ? (
+                        <div className="p-8 text-center text-slate-400 text-xs">
+                          <p>No affiliate conversions recorded for this event yet.</p>
+                        </div>
+                      ) : (
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-left text-xs">
+                            <thead className="bg-slate-950/60 text-slate-400 uppercase text-[10px] font-bold tracking-wider">
+                              <tr>
+                                <th className="px-4 py-3">Promoter</th>
+                                <th className="px-4 py-3 text-center">Code</th>
+                                <th className="px-4 py-3 text-center">Sales</th>
+                                <th className="px-4 py-3 text-right">Volume</th>
+                                <th className="px-4 py-3 text-right">Commission</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-white/5">
+                              {analyticsData.topPromoters.map((p, idx) => (
+                                <tr key={idx} className="hover:bg-white/[0.02]">
+                                  <td className="px-4 py-3 font-bold text-white">{p.promoterName}</td>
+                                  <td className="px-4 py-3 text-center font-mono text-amber-400 font-bold">{p.promoterCode}</td>
+                                  <td className="px-4 py-3 text-center font-mono text-slate-300">{p.salesCount}</td>
+                                  <td className="px-4 py-3 text-right font-mono text-emerald-400 font-semibold">{p.revenueGenerated.toLocaleString()} ETB</td>
+                                  <td className="px-4 py-3 text-right font-mono text-amber-400">{p.commissionEarned.toLocaleString()} ETB</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ) : null}
             </div>
           )}
         </div>

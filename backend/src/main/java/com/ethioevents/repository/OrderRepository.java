@@ -23,4 +23,5 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
 
     List<Order> findByEventOrganizerIdAndStatus(UUID organizerId, OrderStatus status);
     List<Order> findByEventIdAndStatus(UUID eventId, OrderStatus status);
+    List<Order> findByEventId(UUID eventId);
 }
