@@ -15,6 +15,7 @@ public class SmsGatewayDispatcher implements SmsGatewayService {
     private static final Logger log = LoggerFactory.getLogger(SmsGatewayDispatcher.class);
 
     private final SmsLogRepository smsLogRepository;
+    private final AfroMessageSmsGateway afroMessageGateway;
     private final EthioTelecomSmsGateway ethioTelecomGateway;
     private final AfricasTalkingSmsGateway africasTalkingGateway;
     private final TwilioSmsGateway twilioGateway;
@@ -22,11 +23,13 @@ public class SmsGatewayDispatcher implements SmsGatewayService {
 
     public SmsGatewayDispatcher(
             SmsLogRepository smsLogRepository,
+            AfroMessageSmsGateway afroMessageGateway,
             EthioTelecomSmsGateway ethioTelecomGateway,
             AfricasTalkingSmsGateway africasTalkingGateway,
             TwilioSmsGateway twilioGateway,
             @Value("${ethioevents.sms.provider:MOCK}") String activeProvider) {
         this.smsLogRepository = smsLogRepository;
+        this.afroMessageGateway = afroMessageGateway;
         this.ethioTelecomGateway = ethioTelecomGateway;
         this.africasTalkingGateway = africasTalkingGateway;
         this.twilioGateway = twilioGateway;
@@ -76,6 +79,13 @@ public class SmsGatewayDispatcher implements SmsGatewayService {
         log.info("Dispatching [{}] SMS to {} via provider [{}]", messageType, phoneNumber, provider);
 
         switch (provider) {
+            case "AFROMESSAGE": {
+                AfroMessageSmsGateway.SendResult res = afroMessageGateway.sendMessage(phoneNumber, content);
+                success = res.success();
+                externalMessageId = res.messageId();
+                errorMessage = res.error();
+                break;
+            }
             case "ETHIO_TELECOM": {
                 EthioTelecomSmsGateway.SendResult res = ethioTelecomGateway.sendMessage(phoneNumber, content);
                 success = res.success();
