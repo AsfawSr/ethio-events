@@ -28,7 +28,9 @@ public class EventDtos {
             String neighborhood,
             String neighborhoodAmharic,
             boolean featured,
-            List<String> tags
+            List<String> tags,
+            Double latitude,
+            Double longitude
     ) {}
 
     public record EventDetailDto(
@@ -50,6 +52,8 @@ public class EventDtos {
             String neighborhoodAmharic,
             boolean featured,
             List<String> tags,
+            Double latitude,
+            Double longitude,
             List<TicketTypeDto> ticketTypes
     ) {}
 
@@ -78,6 +82,8 @@ public class EventDtos {
             String neighborhood,
             Boolean featured,
             String tags,
+            Double latitude,
+            Double longitude,
             List<CreateTicketTypeRequest> ticketTypes
     ) {}
 

@@ -39,6 +39,8 @@ export interface EventSummary {
   neighborhoodAmharic?: string;
   featured?: boolean;
   tags?: string[];
+  latitude?: number;
+  longitude?: number;
 }
 
 export interface EventDetail {
@@ -60,7 +62,38 @@ export interface EventDetail {
   neighborhoodAmharic?: string;
   featured?: boolean;
   tags?: string[];
+  latitude?: number;
+  longitude?: number;
   ticketTypes: TicketType[];
+}
+
+export interface RideServiceOption {
+  id: string;
+  name: string;
+  amharicName: string;
+  logoEmoji: string;
+  shortCode?: string;
+  phoneDialUrl?: string;
+  appDeepLinkUrl?: string;
+  baseFareEtb: number;
+  perKmRateEtb: number;
+  surgeMultiplier: number;
+  badgeText: string;
+  vehicleType: string;
+}
+
+export interface RideFareEstimate {
+  serviceId: string;
+  serviceName: string;
+  serviceEmoji: string;
+  minFareEtb: number;
+  maxFareEtb: number;
+  estimatedMinutes: number;
+  distanceKm: number;
+  shortCode?: string;
+  phoneDialUrl?: string;
+  appDeepLinkUrl?: string;
+  badge: string;
 }
 
 export interface CategoryFilterItem {

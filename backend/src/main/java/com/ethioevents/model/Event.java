@@ -60,6 +60,12 @@ public class Event {
     @Column(name = "tags", length = 255, nullable = true, columnDefinition = "varchar(255) default ''")
     private String tags = "";
 
+    @Column(name = "latitude")
+    private Double latitude;
+
+    @Column(name = "longitude")
+    private Double longitude;
+
     @OneToMany(mappedBy = "event", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<TicketType> ticketTypes = new ArrayList<>();
 
@@ -109,6 +115,10 @@ public class Event {
     public void setFeatured(Boolean featured) { this.featured = Boolean.TRUE.equals(featured); }
     public String getTags() { return tags != null ? tags : ""; }
     public void setTags(String tags) { this.tags = tags; }
+    public Double getLatitude() { return latitude; }
+    public void setLatitude(Double latitude) { this.latitude = latitude; }
+    public Double getLongitude() { return longitude; }
+    public void setLongitude(Double longitude) { this.longitude = longitude; }
     public List<TicketType> getTicketTypes() { return ticketTypes; }
     public void setTicketTypes(List<TicketType> ticketTypes) { this.ticketTypes = ticketTypes; }
     public Instant getCreatedAt() { return createdAt; }
