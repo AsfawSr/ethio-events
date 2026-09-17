@@ -1356,13 +1356,13 @@ export default function OrganizerPortalPage() {
                                 {aff.totalClicks}
                               </td>
                               <td className="px-5 py-4 text-center font-mono font-bold text-white">
-                                {aff.totalConversions}
+                                {aff.totalConversions ?? aff.totalSalesCount ?? 0}
                               </td>
                               <td className="px-5 py-4 text-right font-mono text-slate-300">
-                                {aff.totalSalesEtb.toLocaleString()} ETB
+                                {(aff.totalSalesEtb ?? aff.totalGrossRevenueEtb ?? 0).toLocaleString()} ETB
                               </td>
                               <td className="px-5 py-4 text-right font-mono font-black text-amber-400">
-                                {aff.totalCommissionEtb.toLocaleString()} ETB
+                                {(aff.totalCommissionEtb ?? aff.totalCommissionEarnedEtb ?? 0).toLocaleString()} ETB
                               </td>
                               <td className="px-5 py-4 text-center">
                                 <button

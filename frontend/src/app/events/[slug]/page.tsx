@@ -14,10 +14,13 @@ import {
   CheckCircle2,
   Clock,
   Building,
+  Layers,
+  Map as MapIcon,
 } from 'lucide-react';
-import { EventDetail, TicketType } from '@/lib/types';
+import { EventDetail, TicketType, SeatItem } from '@/lib/types';
 import { api } from '@/lib/api';
 import ReservationModal from '@/components/ReservationModal';
+import VenueSeatingChart from '@/components/VenueSeatingChart';
 
 export default function EventDetailPage() {
   const params = useParams();
@@ -28,6 +31,8 @@ export default function EventDetailPage() {
   const [loading, setLoading] = useState(true);
   const [selectedTier, setSelectedTier] = useState<TicketType | null>(null);
   const [showReserveModal, setShowReserveModal] = useState(false);
+  const [bookingMode, setBookingMode] = useState<'quick' | 'seating'>('quick');
+  const [selectedSeats, setSelectedSeats] = useState<SeatItem[]>([]);
 
   useEffect(() => {
     async function loadEvent() {
@@ -120,6 +125,21 @@ export default function EventDetailPage() {
     loadEvent();
   }, [slug]);
 
+  const handleConfirmSeatingPlan = (seats: SeatItem[]) => {
+    setSelectedSeats(seats);
+    if (!event || seats.length === 0) return;
+
+    // Determine appropriate tier for the selected seats
+    const firstSeat = seats[0];
+    const matchingTier =
+      event.ticketTypes.find((t) => t.id === firstSeat.ticketTypeId) ||
+      event.ticketTypes.find((t) => t.name.toLowerCase() === firstSeat.tierName.toLowerCase()) ||
+      event.ticketTypes[0];
+
+    setSelectedTier(matchingTier);
+    setShowReserveModal(true);
+  };
+
   if (loading || !event) {
     return (
       <div className="mx-auto max-w-5xl py-20 px-4 text-center">
@@ -154,7 +174,7 @@ export default function EventDetailPage() {
       {/* Main Container */}
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 -mt-24 sm:-mt-32 relative z-20">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          {/* Left Column: Event Details */}
+          {/* Left Column: Event Details & Interactive Floor Map */}
           <div className="lg:col-span-7 space-y-6">
             {/* Title & Badge Card */}
             <div className="p-6 sm:p-8 rounded-3xl bg-slate-900/90 border border-white/10 shadow-xl backdrop-blur-xl space-y-4">
@@ -200,45 +220,90 @@ export default function EventDetailPage() {
               </div>
             </div>
 
-            {/* About Event Description */}
-            <div className="p-6 sm:p-8 rounded-3xl bg-slate-900/70 border border-white/10 space-y-4">
-              <h2 className="text-lg font-bold text-white uppercase tracking-wider">About This Event</h2>
-              <p className="text-sm sm:text-base text-slate-300 leading-relaxed whitespace-pre-line">
-                {event.description}
-              </p>
+            {/* Interactive Floor Plan Section */}
+            {bookingMode === 'seating' ? (
+              <VenueSeatingChart
+                eventId={event.id}
+                onConfirmSeats={handleConfirmSeatingPlan}
+              />
+            ) : (
+              /* About Event Description */
+              <div className="p-6 sm:p-8 rounded-3xl bg-slate-900/70 border border-white/10 space-y-4">
+                <div className="flex items-center justify-between border-b border-white/10 pb-3">
+                  <h2 className="text-lg font-bold text-white uppercase tracking-wider">About This Event</h2>
+                  <button
+                    onClick={() => setBookingMode('seating')}
+                    className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-400 hover:text-amber-300 bg-amber-500/10 border border-amber-500/30 px-3 py-1.5 rounded-xl transition active:scale-95"
+                  >
+                    <MapIcon className="h-3.5 w-3.5" />
+                    <span>View Venue Seating Map</span>
+                  </button>
+                </div>
 
-              <div className="border-t border-white/10 pt-4 grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs text-slate-400">
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-400" />
-                  <span>Instant 1-Tap Telebirr Payment</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-400" />
-                  <span>Digital QR Pass Sent to SMS</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-400" />
-                  <span>Offline Validated at Venue Gate</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-400" />
-                  <span>100% Guaranteed Anti-Counterfeit</span>
+                <p className="text-sm sm:text-base text-slate-300 leading-relaxed whitespace-pre-line">
+                  {event.description}
+                </p>
+
+                <div className="border-t border-white/10 pt-4 grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs text-slate-400">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+                    <span>Instant 1-Tap Telebirr Payment</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+                    <span>Digital QR Pass Sent to SMS</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+                    <span>Offline Validated at Venue Gate</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+                    <span>100% Guaranteed Anti-Counterfeit</span>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
           </div>
 
           {/* Right Column: Ticket Tiers & Checkout Selection */}
           <div className="lg:col-span-5 space-y-6">
             <div className="sticky top-24 p-6 sm:p-8 rounded-3xl bg-slate-900/90 border border-amber-500/30 shadow-2xl backdrop-blur-xl space-y-6">
+              {/* Booking Mode Switcher */}
               <div className="flex items-center justify-between border-b border-white/10 pb-4">
                 <div>
-                  <h3 className="text-xl font-black text-white">Select Ticket Tier</h3>
+                  <h3 className="text-xl font-black text-white">
+                    {bookingMode === 'seating' ? 'Interactive Floor Map' : 'Select Ticket Tier'}
+                  </h3>
                   <p className="text-xs text-slate-400">ፈጣን የቲኬት ምርጫ</p>
                 </div>
-                <span className="text-xs font-bold text-amber-400 bg-amber-400/10 px-2.5 py-1 rounded-full border border-amber-400/20">
-                  Zero Login
-                </span>
+
+                <div className="flex gap-1 bg-slate-950 p-1 rounded-xl border border-white/10">
+                  <button
+                    onClick={() => {
+                      setBookingMode('quick');
+                      setSelectedSeats([]);
+                    }}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition ${
+                      bookingMode === 'quick'
+                        ? 'bg-amber-400 text-black shadow-glowGold'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    Tiers
+                  </button>
+                  <button
+                    onClick={() => setBookingMode('seating')}
+                    className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold transition ${
+                      bookingMode === 'seating'
+                        ? 'bg-amber-400 text-black shadow-glowGold'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <MapIcon className="h-3 w-3" />
+                    <span>Map</span>
+                  </button>
+                </div>
               </div>
 
               {/* Tiers List */}
@@ -248,7 +313,12 @@ export default function EventDetailPage() {
                   return (
                     <div
                       key={tier.id}
-                      onClick={() => tier.isAvailable && setSelectedTier(tier)}
+                      onClick={() => {
+                        if (tier.isAvailable) {
+                          setSelectedTier(tier);
+                          setSelectedSeats([]);
+                        }
+                      }}
                       className={`p-4 rounded-2xl border transition-all cursor-pointer ${
                         isSelected
                           ? 'bg-amber-950/40 border-amber-400 shadow-glowGold/20'
@@ -280,14 +350,43 @@ export default function EventDetailPage() {
                 })}
               </div>
 
+              {/* Floor Plan Callout */}
+              {bookingMode === 'quick' && (
+                <div
+                  onClick={() => setBookingMode('seating')}
+                  className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-between cursor-pointer hover:bg-amber-500/20 transition group"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <MapIcon className="h-5 w-5 text-amber-400 group-hover:scale-110 transition" />
+                    <div>
+                      <p className="text-xs font-bold text-white">Pick Specific Seats &amp; VIP Tables</p>
+                      <p className="text-[10px] text-slate-400">Open Millennium Hall interactive visual chart</p>
+                    </div>
+                  </div>
+                  <span className="text-xs font-bold text-amber-400 group-hover:translate-x-0.5 transition">
+                    &rarr;
+                  </span>
+                </div>
+              )}
+
               {/* Action Button */}
               <button
-                onClick={() => setShowReserveModal(true)}
+                onClick={() => {
+                  if (bookingMode === 'seating' && selectedSeats.length === 0) {
+                    alert('Please click on seats in the floor plan to select your seats first.');
+                  } else {
+                    setShowReserveModal(true);
+                  }
+                }}
                 disabled={!selectedTier}
                 className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-amber-400 via-amber-300 to-yellow-400 hover:from-amber-300 hover:to-yellow-300 text-black font-extrabold text-base py-4 rounded-2xl shadow-glowGold active:scale-[0.98] transition disabled:opacity-50"
               >
                 <Zap className="h-5 w-5" />
-                <span>Reserve with Phone Number</span>
+                <span>
+                  {selectedSeats.length > 0
+                    ? `Reserve ${selectedSeats.length} Selected Seats`
+                    : 'Reserve with Phone Number'}
+                </span>
               </button>
 
               <p className="text-[11px] text-center text-slate-400">
@@ -303,6 +402,7 @@ export default function EventDetailPage() {
         <ReservationModal
           eventTitle={event.title}
           selectedTier={selectedTier}
+          selectedSeats={selectedSeats.length > 0 ? selectedSeats : undefined}
           onClose={() => setShowReserveModal(false)}
         />
       )}

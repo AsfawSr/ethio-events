@@ -50,6 +50,13 @@ public class Ticket {
     @JoinColumn(name = "checked_in_by")
     private User checkedInBy;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "seat_id")
+    private Seat seat;
+
+    @Column(name = "seat_label", length = 100)
+    private String seatLabel;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt = Instant.now();
 
@@ -88,6 +95,10 @@ public class Ticket {
     public void setCheckedInAtUtc(Instant checkedInAtUtc) { this.checkedInAtUtc = checkedInAtUtc; }
     public User getCheckedInBy() { return checkedInBy; }
     public void setCheckedInBy(User checkedInBy) { this.checkedInBy = checkedInBy; }
+    public Seat getSeat() { return seat; }
+    public void setSeat(Seat seat) { this.seat = seat; }
+    public String getSeatLabel() { return seatLabel; }
+    public void setSeatLabel(String seatLabel) { this.seatLabel = seatLabel; }
     public Instant getCreatedAt() { return createdAt; }
     public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }

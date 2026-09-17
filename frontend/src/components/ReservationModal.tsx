@@ -17,23 +17,25 @@ import {
   Check,
   Percent,
 } from 'lucide-react';
-import { TicketType, ReservationResponse, ValidatePromoResponse } from '@/lib/types';
+import { TicketType, ReservationResponse, ValidatePromoResponse, SeatItem } from '@/lib/types';
 import { api } from '@/lib/api';
 import CountdownTimer from './CountdownTimer';
 
 interface ReservationModalProps {
   eventTitle: string;
   selectedTier: TicketType;
+  selectedSeats?: SeatItem[];
   onClose: () => void;
 }
 
 export default function ReservationModal({
   eventTitle,
   selectedTier,
+  selectedSeats,
   onClose,
 }: ReservationModalProps) {
   const router = useRouter();
-  const [quantity, setQuantity] = useState(1);
+  const [quantity, setQuantity] = useState(selectedSeats && selectedSeats.length > 0 ? selectedSeats.length : 1);
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [loading, setLoading] = useState(false);
@@ -110,6 +112,7 @@ export default function ReservationModal({
         customerName: customerName.trim(),
         promoCode: promoResult && promoResult.valid ? promoResult.code : undefined,
         affiliateCode: storedRef || undefined,
+        selectedSeatIds: selectedSeats && selectedSeats.length > 0 ? selectedSeats.map((s) => s.id) : undefined,
       });
       setReservation(res);
     } catch (err: any) {
@@ -192,23 +195,39 @@ export default function ReservationModal({
             /* STEP 1: Enter Phone, Name & Quantity */
             <form onSubmit={handleReserve} className="space-y-5">
               {/* Selected Tier Badge */}
-              <div className="flex items-center justify-between p-4 rounded-2xl bg-slate-800/60 border border-white/5">
-                <div>
-                  <p className="text-xs text-slate-400 font-medium">Selected Tier</p>
-                  <p className="text-base font-bold text-white">{selectedTier.name}</p>
+              <div className="p-4 rounded-2xl bg-slate-800/60 border border-white/5 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs text-slate-400 font-medium">Selected Tier</p>
+                    <p className="text-base font-bold text-white">{selectedTier.name}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-slate-400 font-medium">Price per Ticket</p>
+                    <p className="text-lg font-extrabold text-amber-400">
+                      {unitPrice.toLocaleString()} <span className="text-xs text-slate-400">ETB</span>
+                    </p>
+                  </div>
                 </div>
-                <div className="text-right">
-                  <p className="text-xs text-slate-400 font-medium">Price per Ticket</p>
-                  <p className="text-lg font-extrabold text-amber-400">
-                    {unitPrice.toLocaleString()} <span className="text-xs text-slate-400">ETB</span>
-                  </p>
-                </div>
+
+                {selectedSeats && selectedSeats.length > 0 && (
+                  <div className="pt-2 border-t border-white/5 flex items-center gap-1.5 flex-wrap">
+                    <span className="text-[11px] font-bold text-amber-400">Reserved Seats:</span>
+                    {selectedSeats.map((s) => (
+                      <span
+                        key={s.id}
+                        className="text-[11px] font-mono font-bold bg-amber-400/20 text-amber-300 border border-amber-400/30 px-2 py-0.5 rounded-md"
+                      >
+                        {s.seatLabel}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Quantity Selector */}
               <div>
                 <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-2">
-                  Number of Tickets (Max {Math.min(selectedTier.maxPerUser, selectedTier.availableCapacity)})
+                  Number of Tickets {selectedSeats && selectedSeats.length > 0 ? '(Locked to Selected Seats)' : `(Max ${Math.min(selectedTier.maxPerUser, selectedTier.availableCapacity)})`}
                 </label>
                 <div className="flex items-center gap-3">
                   {[1, 2, 3, 4, 5]

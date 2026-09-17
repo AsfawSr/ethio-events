@@ -274,7 +274,7 @@ export default function PromotersPortalPage() {
                       Unpaid Available Balance
                     </span>
                     <div className="text-2xl font-black text-emerald-400 mt-0.5 font-mono">
-                      {dashboardData.affiliate.unpaidCommissionEtb.toLocaleString()} <span className="text-sm text-emerald-300">ETB</span>
+                      {(dashboardData.affiliate.unpaidCommissionEtb ?? dashboardData.affiliate.totalCommissionEarnedEtb ?? 0).toLocaleString()} <span className="text-sm text-emerald-300">ETB</span>
                     </div>
                   </div>
                 </div>
@@ -298,10 +298,10 @@ export default function PromotersPortalPage() {
                       <Users className="h-4 w-4 text-emerald-400" />
                     </div>
                     <div className="text-2xl font-black text-white font-mono">
-                      {dashboardData.affiliate.totalConversions.toLocaleString()}
+                      {(dashboardData.affiliate.totalConversions ?? dashboardData.affiliate.totalSalesCount ?? 0).toLocaleString()}
                     </div>
                     <p className="text-[11px] text-emerald-400 mt-1">
-                      {dashboardData.conversionRate}% Conversion Rate
+                      {dashboardData.conversionRate || Math.round(((dashboardData.affiliate.totalSalesCount || 0) / Math.max(1, dashboardData.affiliate.totalClicks)) * 100 * 10) / 10}% Conversion Rate
                     </p>
                   </div>
 
@@ -311,7 +311,7 @@ export default function PromotersPortalPage() {
                       <TrendingUp className="h-4 w-4 text-amber-400" />
                     </div>
                     <div className="text-2xl font-black text-white font-mono">
-                      {dashboardData.affiliate.totalSalesEtb.toLocaleString()} <span className="text-xs text-amber-400">ETB</span>
+                      {(dashboardData.affiliate.totalSalesEtb ?? dashboardData.affiliate.totalGrossRevenueEtb ?? 0).toLocaleString()} <span className="text-xs text-amber-400">ETB</span>
                     </div>
                     <p className="text-[11px] text-slate-400 mt-1">Total revenue generated</p>
                   </div>
@@ -322,9 +322,9 @@ export default function PromotersPortalPage() {
                       <DollarSign className="h-4 w-4 text-indigo-400" />
                     </div>
                     <div className="text-2xl font-black text-amber-400 font-mono">
-                      {dashboardData.affiliate.totalCommissionEtb.toLocaleString()} <span className="text-xs text-amber-300">ETB</span>
+                      {(dashboardData.affiliate.totalCommissionEtb ?? dashboardData.affiliate.totalCommissionEarnedEtb ?? 0).toLocaleString()} <span className="text-xs text-amber-300">ETB</span>
                     </div>
-                    <p className="text-[11px] text-slate-400 mt-1">Paid: {dashboardData.affiliate.paidCommissionEtb.toLocaleString()} ETB</p>
+                    <p className="text-[11px] text-slate-400 mt-1">Paid: {(dashboardData.affiliate.paidCommissionEtb || 0).toLocaleString()} ETB</p>
                   </div>
                 </div>
 
@@ -430,10 +430,10 @@ export default function PromotersPortalPage() {
                                 {ref.eventTitle}
                               </td>
                               <td className="px-5 py-4 text-right font-mono text-slate-300">
-                                {ref.orderAmount.toLocaleString()} ETB
+                                {(ref.orderAmount ?? ref.orderAmountEtb ?? 0).toLocaleString()} ETB
                               </td>
                               <td className="px-5 py-4 text-right font-mono font-black text-emerald-400">
-                                + {ref.commissionAmount.toLocaleString()} ETB
+                                + {(ref.commissionAmount ?? ref.commissionEarnedEtb ?? 0).toLocaleString()} ETB
                               </td>
                               <td className="px-5 py-4 text-center">
                                 <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-950/80 text-emerald-300 border border-emerald-500/40">
