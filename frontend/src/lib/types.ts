@@ -96,6 +96,34 @@ export interface SearchEventsParams {
   sort?: 'START_TIME_ASC' | 'PRICE_LOW_HIGH' | 'PRICE_HIGH_LOW' | 'FEATURED_FIRST' | string;
 }
 
+export type SupportedCurrency = 'ETB' | 'USD' | 'EUR' | 'GBP' | 'CAD' | 'AED';
+
+export interface CurrencyInfo {
+  code: SupportedCurrency | string;
+  name: string;
+  symbol: string;
+  flag: string;
+  etbRate: number;
+}
+
+export interface ExchangeRatesResponse {
+  baseCurrency: string;
+  lastUpdated: string;
+  currencies: CurrencyInfo[];
+}
+
+export interface StripeCheckoutResponse {
+  orderNumber: string;
+  clientSecret: string;
+  checkoutUrl: string;
+  paymentIntentId: string;
+  amount: number;
+  currency: string;
+  exchangeRateEtb: number;
+  isGift: boolean;
+  giftRecipientName?: string;
+}
+
 export interface GuestReserveRequest {
   ticketTypeId: string;
   quantity: number;
@@ -104,6 +132,13 @@ export interface GuestReserveRequest {
   promoCode?: string;
   affiliateCode?: string;
   selectedSeatIds?: string[];
+  currency?: string;
+  isGift?: boolean;
+  giftRecipientName?: string;
+  giftRecipientPhone?: string;
+  giftMessage?: string;
+  purchaserEmail?: string;
+  purchaserCountry?: string;
 }
 
 export interface ValidatePromoResponse {
@@ -215,6 +250,11 @@ export interface ReservationResponse {
   unitPrice: number;
   totalAmount: number;
   currency: string;
+  foreignAmount?: number;
+  exchangeRate?: number;
+  isGift?: boolean;
+  giftRecipientName?: string;
+  giftRecipientPhone?: string;
   status: string;
   reservedUntilIsoUtc: string;
   expiresInSeconds: number;
@@ -248,6 +288,15 @@ export interface OrderDetails {
   customerPhone: string;
   totalAmount: number;
   currency: string;
+  foreignAmount?: number;
+  exchangeRate?: number;
+  paymentGateway?: string;
+  isGift?: boolean;
+  giftRecipientName?: string;
+  giftRecipientPhone?: string;
+  giftMessage?: string;
+  purchaserEmail?: string;
+  purchaserCountry?: string;
   status: string;
   reservedUntilIsoUtc: string;
   items: OrderItem[];

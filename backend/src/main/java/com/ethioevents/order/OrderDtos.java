@@ -28,18 +28,32 @@ public class OrderDtos {
 
             String affiliateCode,
 
-            List<UUID> selectedSeatIds
+            List<UUID> selectedSeatIds,
+
+            String currency,
+
+            Boolean isGift,
+
+            String giftRecipientName,
+
+            String giftRecipientPhone,
+
+            String giftMessage,
+
+            String purchaserEmail,
+
+            String purchaserCountry
     ) {
         public GuestReserveRequest(UUID ticketTypeId, int quantity, String customerPhone, String customerName) {
-            this(ticketTypeId, quantity, customerPhone, customerName, null, null, null);
+            this(ticketTypeId, quantity, customerPhone, customerName, null, null, null, "ETB", false, null, null, null, null, null);
         }
 
         public GuestReserveRequest(UUID ticketTypeId, int quantity, String customerPhone, String customerName, String promoCode) {
-            this(ticketTypeId, quantity, customerPhone, customerName, promoCode, null, null);
+            this(ticketTypeId, quantity, customerPhone, customerName, promoCode, null, null, "ETB", false, null, null, null, null, null);
         }
 
         public GuestReserveRequest(UUID ticketTypeId, int quantity, String customerPhone, String customerName, String promoCode, String affiliateCode) {
-            this(ticketTypeId, quantity, customerPhone, customerName, promoCode, affiliateCode, null);
+            this(ticketTypeId, quantity, customerPhone, customerName, promoCode, affiliateCode, null, "ETB", false, null, null, null, null, null);
         }
     }
 
@@ -51,6 +65,11 @@ public class OrderDtos {
             BigDecimal unitPrice,
             BigDecimal totalAmount,
             String currency,
+            BigDecimal foreignAmount,
+            BigDecimal exchangeRate,
+            boolean isGift,
+            String giftRecipientName,
+            String giftRecipientPhone,
             String status,
             String reservedUntilIsoUtc,
             long expiresInSeconds,
@@ -68,6 +87,15 @@ public class OrderDtos {
             String customerPhone,
             BigDecimal totalAmount,
             String currency,
+            BigDecimal foreignAmount,
+            BigDecimal exchangeRate,
+            String paymentGateway,
+            boolean isGift,
+            String giftRecipientName,
+            String giftRecipientPhone,
+            String giftMessage,
+            String purchaserEmail,
+            String purchaserCountry,
             String status,
             String reservedUntilIsoUtc,
             List<OrderItemDto> items,

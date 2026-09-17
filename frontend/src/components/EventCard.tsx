@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { MapPin, Calendar, ArrowUpRight, Sparkles, Tag } from 'lucide-react';
 import { EventSummary } from '@/lib/types';
 import { useI18n } from '@/lib/i18n';
+import { useCurrency } from '@/lib/currency';
 
 interface EventCardProps {
   event: EventSummary;
@@ -12,6 +13,7 @@ interface EventCardProps {
 
 export default function EventCard({ event }: EventCardProps) {
   const { t, language } = useI18n();
+  const { currency, formatPrice } = useCurrency();
 
   const categoryLabel = language === 'am' && event.categoryAmharic
     ? `${event.categoryEmoji || '🎟️'} ${event.categoryAmharic}`
@@ -120,9 +122,7 @@ export default function EventCard({ event }: EventCardProps) {
             </span>
             <span className="text-base font-extrabold text-amber-400">
               {event.minPrice > 0 ? (
-                <>
-                  {event.minPrice.toLocaleString()} <span className="text-xs text-slate-400 font-normal">ETB</span>
-                </>
+                formatPrice(event.minPrice)
               ) : (
                 <span className="text-emerald-400">Free Admission</span>
               )}

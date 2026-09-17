@@ -81,34 +81,57 @@ public class TicketService {
                 Ed25519TicketSigner.SignedTicketPayload signed =
                         ticketSigner.signTicket(ticketId, order.getEvent().getId(), ticketCode);
 
+                String attendeeName = order.isGift() && order.getGiftRecipientName() != null && !order.getGiftRecipientName().isBlank()
+                        ? order.getGiftRecipientName().trim()
+                        : order.getCustomerName();
+                String attendeePhone = order.isGift() && order.getGiftRecipientPhone() != null && !order.getGiftRecipientPhone().isBlank()
+                        ? order.getGiftRecipientPhone().trim()
+                        : order.getCustomerPhone();
+
                 Ticket ticket = new Ticket();
                 ticket.setId(ticketId);
                 ticket.setTicketCode(ticketCode);
                 ticket.setOrder(order);
                 ticket.setTicketType(item.getTicketType());
                 ticket.setEvent(order.getEvent());
-                ticket.setAttendeeName(order.getCustomerName());
-                ticket.setAttendeePhone(order.getCustomerPhone());
+                ticket.setAttendeeName(attendeeName);
+                ticket.setAttendeePhone(attendeePhone);
                 ticket.setSecurityHash(signed.securityHash());
                 ticket.setDigitalSignature(signed.fullQrPayload());
                 ticket.setStatus(TicketStatus.ISSUED);
 
                 Ticket saved = ticketRepository.save(ticket);
                 generatedTickets.add(saved);
-                log.info("Generated cryptographic ticket {} for Order {}", ticketCode, order.getOrderNumber());
+                log.info("Generated cryptographic ticket {} for Order {} (Attendee: {}, Gift: {})",
+                        ticketCode, order.getOrderNumber(), attendeeName, order.isGift());
             }
         }
 
-        // Send confirmation SMS with direct link to first ticket
+        // Send confirmation SMS with direct link to tickets
         if (!generatedTickets.isEmpty()) {
             Ticket firstTicket = generatedTickets.get(0);
             String ticketPassUrl = "http://localhost:3000/t/" + firstTicket.getSecurityHash();
-            smsGatewayService.sendTicketConfirmationSms(
-                    order.getCustomerPhone(),
-                    order.getEvent().getTitle(),
-                    firstTicket.getTicketCode(),
-                    ticketPassUrl
-            );
+
+            if (order.isGift() && order.getGiftRecipientPhone() != null && !order.getGiftRecipientPhone().isBlank()) {
+                // Send personalized Gifting SMS to recipient in Ethiopia
+                String senderName = order.getCustomerName() != null ? order.getCustomerName() : "A loved one";
+                smsGatewayService.sendTicketTransferSms(
+                        order.getGiftRecipientPhone(),
+                        senderName,
+                        order.getEvent().getTitle(),
+                        firstTicket.getTicketCode(),
+                        ticketPassUrl
+                );
+                log.info("Dispatched Gifting SMS notification to recipient {} for Order {}",
+                        order.getGiftRecipientPhone(), order.getOrderNumber());
+            } else {
+                smsGatewayService.sendTicketConfirmationSms(
+                        order.getCustomerPhone(),
+                        order.getEvent().getTitle(),
+                        firstTicket.getTicketCode(),
+                        ticketPassUrl
+                );
+            }
         }
 
         return generatedTickets;

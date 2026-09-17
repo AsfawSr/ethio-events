@@ -18,6 +18,11 @@ import {
   Loader2,
   Check,
   ExternalLink,
+  Gift,
+  Heart,
+  Globe,
+  Smartphone,
+  Mail,
 } from 'lucide-react';
 import { OrderDetails } from '@/lib/types';
 import { api } from '@/lib/api';
@@ -141,6 +146,8 @@ export default function OrderStatusPage() {
   }
 
   const isPaid = order.status === 'PAID';
+  const isGift = order.isGift;
+  const isForeignCurrency = order.currency && order.currency !== 'ETB';
 
   return (
     <div className="mx-auto max-w-3xl py-12 px-4 sm:px-6 lg:px-8 space-y-8 animate-fadeIn">
@@ -148,37 +155,119 @@ export default function OrderStatusPage() {
       <div
         className={`p-6 sm:p-8 rounded-3xl border text-center space-y-3 ${
           isPaid
-            ? 'bg-emerald-950/30 border-emerald-500/40 shadow-glowEmerald'
+            ? isGift
+              ? 'bg-gradient-to-b from-purple-950/40 via-indigo-950/30 to-slate-900 border-purple-500/40 shadow-2xl'
+              : 'bg-emerald-950/30 border-emerald-500/40 shadow-glowEmerald'
             : 'bg-amber-950/30 border-amber-500/40'
         }`}
       >
         <div
           className={`h-14 w-14 rounded-2xl mx-auto flex items-center justify-center ${
-            isPaid ? 'bg-emerald-500 text-black' : 'bg-amber-500 text-black'
+            isPaid
+              ? isGift
+                ? 'bg-purple-500 text-white shadow-lg'
+                : 'bg-emerald-500 text-black'
+              : 'bg-amber-500 text-black'
           }`}
         >
-          {isPaid ? <CheckCircle className="h-8 w-8" /> : <Ticket className="h-8 w-8" />}
+          {isPaid ? (
+            isGift ? (
+              <Gift className="h-8 w-8" />
+            ) : (
+              <CheckCircle className="h-8 w-8" />
+            )
+          ) : (
+            <Ticket className="h-8 w-8" />
+          )}
         </div>
 
         <h1 className="text-2xl sm:text-3xl font-black text-white">
-          {isPaid ? 'Payment Confirmed! Your Tickets are Ready 🎉' : 'Order Pending Payment'}
+          {isPaid
+            ? isGift
+              ? 'Diaspora Gift Pass Sent to Addis Ababa! 🎁'
+              : 'Payment Confirmed! Your Tickets are Ready 🎉'
+            : 'Order Pending Payment'}
         </h1>
 
         <p className="text-sm text-slate-300 max-w-md mx-auto">
-          {isPaid
-            ? `Confirmation sent to ${order.customerPhone}. You can show the digital QR pass directly on your phone at the Millennium Hall gate.`
-            : 'Please complete your Telebirr / Chapa payment before the reservation expires.'}
+          {isPaid ? (
+            isGift ? (
+              <span>
+                Gift pass &amp; personal message delivered via AfroMessage SMS to{' '}
+                <strong className="text-amber-300">{order.giftRecipientPhone || order.customerPhone}</strong>.
+              </span>
+            ) : (
+              `Confirmation sent to ${order.customerPhone}. You can show the digital QR pass directly on your phone at the gate.`
+            )
+          ) : (
+            'Please complete your payment before the reservation expires.'
+          )}
         </p>
 
-        <div className="pt-2 flex items-center justify-center gap-2">
+        <div className="pt-2 flex flex-wrap items-center justify-center gap-2">
           <span className="font-mono text-xs font-bold text-slate-300 bg-black/40 border border-white/10 px-3 py-1 rounded-full">
             Order #{order.orderNumber}
           </span>
           <span className="text-xs font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-3 py-1 rounded-full">
             Status: {order.status}
           </span>
+          {isGift && (
+            <span className="text-xs font-bold text-purple-300 bg-purple-500/20 border border-purple-500/40 px-3 py-1 rounded-full flex items-center gap-1">
+              <Gift className="h-3 w-3" />
+              Diaspora Gift
+            </span>
+          )}
+          {isForeignCurrency && (
+            <span className="text-xs font-bold text-blue-300 bg-blue-500/20 border border-blue-500/40 px-3 py-1 rounded-full flex items-center gap-1">
+              <Globe className="h-3 w-3" />
+              {order.currency}
+            </span>
+          )}
         </div>
       </div>
+
+      {/* Diaspora Gift Greeting Card Banner */}
+      {isGift && (
+        <div className="p-6 rounded-3xl bg-gradient-to-br from-purple-900/30 via-slate-900 to-indigo-950/40 border border-purple-500/40 shadow-xl space-y-4 animate-fadeIn">
+          <div className="flex items-center justify-between border-b border-purple-500/20 pb-3">
+            <div className="flex items-center gap-2 text-purple-300 font-bold text-sm">
+              <Heart className="h-4 w-4 text-pink-400" />
+              <span>Personalized Diaspora Gift Greeting</span>
+            </div>
+            <span className="text-[11px] font-mono text-purple-300/80 bg-purple-500/10 px-2 py-0.5 rounded border border-purple-500/20">
+              AfroMessage SMS Dispatched
+            </span>
+          </div>
+
+          <div className="space-y-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+              <div className="p-3 rounded-xl bg-slate-900/80 border border-white/5">
+                <p className="text-slate-400 font-medium">To Recipient in Ethiopia:</p>
+                <p className="text-sm font-bold text-white mt-0.5">
+                  {order.giftRecipientName || order.customerName}
+                </p>
+                <p className="text-xs font-mono text-amber-400">{order.giftRecipientPhone || order.customerPhone}</p>
+              </div>
+
+              <div className="p-3 rounded-xl bg-slate-900/80 border border-white/5">
+                <p className="text-slate-400 font-medium">From (Purchaser):</p>
+                <p className="text-sm font-bold text-white mt-0.5">{order.customerName}</p>
+                {order.purchaserEmail && <p className="text-xs text-slate-400">{order.purchaserEmail}</p>}
+                {order.purchaserCountry && (
+                  <p className="text-[11px] text-purple-300">Country: {order.purchaserCountry}</p>
+                )}
+              </div>
+            </div>
+
+            {order.giftMessage && (
+              <div className="p-4 rounded-2xl bg-purple-950/40 border border-purple-500/30 text-xs">
+                <p className="text-slate-400 text-[11px] font-semibold mb-1">Gift Note / መልዕክት:</p>
+                <p className="text-sm italic text-purple-200 font-serif">"{order.giftMessage}"</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Event Details Card */}
       <div className="p-6 rounded-3xl bg-slate-900/80 border border-white/10 space-y-4">
@@ -240,7 +329,9 @@ export default function OrderStatusPage() {
                   <p className="text-base font-mono font-bold text-white mt-1.5">
                     Code: {t.ticketCode}
                   </p>
-                  <p className="text-xs text-slate-400">Attendee: {t.attendeeName}</p>
+                  <p className="text-xs text-slate-400">
+                    Attendee: <strong className="text-white">{t.attendeeName}</strong>
+                  </p>
                 </div>
 
                 <div className="flex items-center gap-2">
@@ -273,13 +364,35 @@ export default function OrderStatusPage() {
         </div>
       )}
 
-      {/* Summary Footer */}
-      <div className="p-6 rounded-2xl bg-slate-900/40 border border-white/5 flex items-center justify-between text-sm">
-        <span className="text-slate-400">Total Paid via Mobile Money:</span>
-        <span className="text-xl font-black text-amber-400">
-          {order.totalAmount.toLocaleString()} {order.currency}
-        </span>
+      {/* Summary Footer with Dual Currency breakdown */}
+      <div className="p-6 rounded-2xl bg-slate-900/40 border border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-sm">
+        <div>
+          <p className="text-slate-400 text-xs font-medium">Payment Gateway &amp; Settlement:</p>
+          <p className="text-white font-semibold text-xs mt-0.5">
+            {order.paymentGateway === 'STRIPE_DIASPORA'
+              ? 'International Card / Stripe Diaspora'
+              : order.paymentGateway === 'CHAPA'
+              ? 'Chapa Financial Gateway'
+              : 'Telebirr 1-Tap Mobile Money'}
+          </p>
+        </div>
+        <div className="text-right">
+          <p className="text-slate-400 text-xs">Total Amount Paid:</p>
+          <p className="text-xl font-black text-amber-400">
+            {isForeignCurrency && order.foreignAmount ? (
+              <>
+                {order.foreignAmount.toFixed(2)} {order.currency}{' '}
+                <span className="text-xs font-normal text-slate-400">
+                  ({order.totalAmount.toLocaleString()} ETB)
+                </span>
+              </>
+            ) : (
+              `${order.totalAmount.toLocaleString()} ETB`
+            )}
+          </p>
+        </div>
       </div>
     </div>
   );
 }
+
