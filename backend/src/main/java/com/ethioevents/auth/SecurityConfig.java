@@ -48,8 +48,10 @@ public class SecurityConfig {
                         .requestMatchers("/uploads/**").permitAll()
                         .requestMatchers("/h2-console/**").permitAll()
 
-                        // Admin & Staff endpoints
-                        .requestMatchers("/api/v1/admin/**").permitAll()
+                        // Protected Admin & Governance endpoints
+                        .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
+
+                        // Staff & Organizer endpoints
                         .requestMatchers("/api/v1/gate/**").permitAll()
                         .requestMatchers("/api/v1/organizer/**").permitAll()
 
