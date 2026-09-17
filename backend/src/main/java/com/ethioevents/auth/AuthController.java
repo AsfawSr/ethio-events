@@ -128,8 +128,8 @@ public class AuthController {
     @PostMapping("/admin/login")
     public ResponseEntity<ApiResponse<AuthDtos.AuthResponseDto>> adminLogin(
             @RequestBody AuthDtos.AdminLoginRequestDto request) {
-        String phone = (request.phoneNumber() != null && !request.phoneNumber().isBlank())
-                ? PhoneNormalizer.normalize(request.phoneNumber())
+        String rawIdentifier = (request.phoneNumber() != null && !request.phoneNumber().isBlank())
+                ? request.phoneNumber().trim()
                 : "+251911000001";
 
         boolean valid = false;
@@ -145,6 +145,19 @@ public class AuthController {
             }
         }
 
+        // Try normalizing phone if phone-like, else fallback to default admin phone
+        String phone = "+251911000001";
+        try {
+            phone = PhoneNormalizer.normalize(rawIdentifier);
+        } catch (Exception e) {
+            // Identifier was a username or email rather than a phone number
+            if (!valid && (request.otpCode() == null || request.otpCode().isBlank())) {
+                throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_IDENTIFIER",
+                        "Invalid phone number or admin identifier");
+            }
+            phone = "+251911000001";
+        }
+
         // 2. Or OTP verification
         if (!valid && request.otpCode() != null && !request.otpCode().isBlank()) {
             otpService.verifyOtp(phone, request.otpCode().trim());
@@ -155,8 +168,9 @@ public class AuthController {
             throw new ApiException(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "Invalid admin credentials or security passcode");
         }
 
-        User adminUser = userRepository.findByPhoneNumber(phone).orElseGet(() -> {
-            User u = new User(phone, "EthioEvents Admin", UserRole.ADMIN);
+        final String adminPhoneNum = phone;
+        User adminUser = userRepository.findByPhoneNumber(adminPhoneNum).orElseGet(() -> {
+            User u = new User(adminPhoneNum, "EthioEvents Admin", UserRole.ADMIN);
             u.setEmail("admin@ethioevents.com");
             return userRepository.save(u);
         });
