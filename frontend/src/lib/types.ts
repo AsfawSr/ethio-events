@@ -505,4 +505,51 @@ export interface HoldSeatsResponse {
   heldSeats: SeatItem[];
 }
 
+export interface TierSalesBreakdown {
+  tierName: string;
+  soldCount: number;
+  totalCapacity: number;
+  revenue: number;
+  percentOfTotal: number;
+}
+
+export interface PaymentMethodBreakdown {
+  gateway: string;
+  orderCount: number;
+  totalVolume: number;
+  volumePercent: number;
+}
+
+export interface HourlyCheckInStat {
+  hourSlot: string;
+  checkInCount: number;
+  cumulativePercent: number;
+}
+
+export interface PromoterLeaderboardEntry {
+  promoterCode: string;
+  promoterName: string;
+  salesCount: number;
+  revenueGenerated: number;
+  commissionEarned: number;
+}
+
+export interface EventAnalyticsSummary {
+  eventId: string;
+  eventTitle: string;
+  venueName: string;
+  totalTicketsIssued: number;
+  totalCheckedIn: number;
+  attendanceRatePercent: number;
+  grossRevenueEtb: number;
+  platformCommissionEtb: number;
+  netOrganizerPayoutEtb: number;
+  totalOrdersCount: number;
+  averageOrderValueEtb: number;
+  tierSales: TierSalesBreakdown[];
+  paymentBreakdown: PaymentMethodBreakdown[];
+  hourlyCheckIns: HourlyCheckInStat[];
+  topPromoters: PromoterLeaderboardEntry[];
+}
+
 

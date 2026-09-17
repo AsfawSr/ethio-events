@@ -374,5 +374,12 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(data),
     }),
+
+  // Financial Reports, Attendance Analytics & CSV Exports
+  getEventAnalytics: (eventId: string) =>
+    fetchApi<import('./types').EventAnalyticsSummary>(`/reports/events/${eventId}/analytics`),
+
+  getAttendeeCsvUrl: (eventId: string) => `${API_BASE}/reports/events/${eventId}/attendees/csv`,
+  getFinancialCsvUrl: (eventId: string) => `${API_BASE}/reports/events/${eventId}/financials/csv`,
 };
 
