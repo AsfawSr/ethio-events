@@ -41,6 +41,22 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error("ACCESS_DENIED", "You do not have permission to access this resource"));
     }
 
+    @ExceptionHandler(org.springframework.web.context.request.async.AsyncRequestTimeoutException.class)
+    public void handleAsyncTimeout(org.springframework.web.context.request.async.AsyncRequestTimeoutException ex) {
+        log.debug("Async/SSE request timed out (client disconnected)");
+    }
+
+    @ExceptionHandler(java.io.IOException.class)
+    public void handleClientAbort(java.io.IOException ex) {
+        String msg = ex.getMessage() != null ? ex.getMessage() : "";
+        if (msg.contains("aborted") || msg.contains("Broken pipe") || msg.contains("Connection reset")
+                || msg.contains("closed") || ex.getClass().getSimpleName().equals("ClientAbortException")) {
+            log.debug("Client closed SSE or HTTP stream connection: {}", msg);
+            return;
+        }
+        log.warn("I/O stream exception: {}", msg);
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleGeneralException(Exception ex) {
         log.error("Unhandled internal server error", ex);
