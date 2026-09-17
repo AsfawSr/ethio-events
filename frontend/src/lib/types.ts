@@ -55,6 +55,7 @@ export interface GuestReserveRequest {
   customerPhone: string;
   customerName: string;
   promoCode?: string;
+  affiliateCode?: string;
 }
 
 export interface ValidatePromoResponse {
@@ -105,6 +106,49 @@ export interface GateCrewAuthResult {
   gateName: string;
   crewMemberName?: string;
   expiresAt: string;
+}
+
+export interface AffiliateItem {
+  id: string;
+  affiliateCode: string;
+  promoterName: string;
+  phoneNumber: string;
+  email?: string;
+  bankName: string;
+  bankAccountNo?: string;
+  bankAccountName?: string;
+  commissionRate: number;
+  totalClicks: number;
+  totalConversions: number;
+  totalSalesEtb: number;
+  totalCommissionEtb: number;
+  paidCommissionEtb: number;
+  unpaidCommissionEtb: number;
+  active: boolean;
+  createdAt: string;
+}
+
+export interface AffiliateReferralItem {
+  id: string;
+  orderNumber: string;
+  eventTitle: string;
+  orderAmount: number;
+  commissionAmount: number;
+  status: string;
+  createdAt: string;
+}
+
+export interface AffiliateDashboardData {
+  affiliate: AffiliateItem;
+  recentReferrals: AffiliateReferralItem[];
+  conversionRate: number;
+}
+
+export interface TrackClickResult {
+  valid: boolean;
+  affiliateCode?: string;
+  promoterName?: string;
+  commissionRate?: number;
 }
 
 export interface ReservationResponse {

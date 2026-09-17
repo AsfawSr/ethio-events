@@ -37,6 +37,7 @@ public class OrderService {
     private final TicketReservationService ticketReservationService;
     private final TicketService ticketService;
     private final com.ethioevents.promo.PromoService promoService;
+    private final com.ethioevents.affiliate.AffiliateService affiliateService;
 
     public OrderService(OrderRepository orderRepository,
                         OrderItemRepository orderItemRepository,
@@ -46,7 +47,8 @@ public class OrderService {
                         TransactionRepository transactionRepository,
                         TicketReservationService ticketReservationService,
                         TicketService ticketService,
-                        com.ethioevents.promo.PromoService promoService) {
+                        com.ethioevents.promo.PromoService promoService,
+                        com.ethioevents.affiliate.AffiliateService affiliateService) {
         this.orderRepository = orderRepository;
         this.orderItemRepository = orderItemRepository;
         this.userRepository = userRepository;
@@ -56,6 +58,7 @@ public class OrderService {
         this.ticketReservationService = ticketReservationService;
         this.ticketService = ticketService;
         this.promoService = promoService;
+        this.affiliateService = affiliateService;
     }
 
     /**
@@ -112,6 +115,9 @@ public class OrderService {
         order.setCurrency("ETB");
         order.setStatus(OrderStatus.PENDING);
         order.setReservedUntilUtc(reservedUntil);
+        if (request.affiliateCode() != null && !request.affiliateCode().isBlank()) {
+            order.setAffiliateCode(request.affiliateCode().trim().toLowerCase());
+        }
 
         Order savedOrder = orderRepository.save(order);
 
@@ -240,6 +246,15 @@ public class OrderService {
 
         // 3. Issue cryptographic tickets with Ed25519 signatures
         ticketService.generateTicketsForOrder(savedOrder);
+
+        // 4. Record promoter affiliate commission referral if attached
+        if (savedOrder.getAffiliateCode() != null && !savedOrder.getAffiliateCode().isBlank()) {
+            try {
+                affiliateService.recordOrderReferral(savedOrder, savedOrder.getAffiliateCode());
+            } catch (Exception e) {
+                log.warn("Failed to record affiliate referral for order {}: {}", orderNumber, e.getMessage());
+            }
+        }
 
         log.info("Order {} marked as PAID and tickets issued successfully", orderNumber);
         return savedOrder;
