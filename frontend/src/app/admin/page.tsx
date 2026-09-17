@@ -441,14 +441,14 @@ export default function AdminPortalPage() {
             {loginMode === 'passcode' && (
               <form onSubmit={handlePasscodeLogin} className="space-y-4">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-slate-300">Admin Identifier (Phone)</label>
+                  <label className="text-xs font-semibold text-slate-300">Admin Identifier / Phone</label>
                   <div className="relative">
                     <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                     <input
-                      type="tel"
+                      type="text"
                       value={adminPhone}
                       onChange={(e) => setAdminPhone(e.target.value)}
-                      placeholder="+251911000001"
+                      placeholder="admin or +251911000001"
                       className="w-full rounded-xl border border-slate-700 bg-slate-950/80 pl-10 pr-4 py-2.5 text-sm text-white placeholder-slate-500 focus:border-amber-400 focus:outline-none focus:ring-1 focus:ring-amber-400"
                       required
                     />
