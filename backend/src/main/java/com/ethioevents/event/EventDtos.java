@@ -21,7 +21,14 @@ public class EventDtos {
             BigDecimal minPrice,
             BigDecimal maxPrice,
             String currency,
-            boolean isSoldOut
+            boolean isSoldOut,
+            String category,
+            String categoryAmharic,
+            String categoryEmoji,
+            String neighborhood,
+            String neighborhoodAmharic,
+            boolean featured,
+            List<String> tags
     ) {}
 
     public record EventDetailDto(
@@ -36,6 +43,13 @@ public class EventDtos {
             String bannerImageUrl,
             String status,
             String organizerName,
+            String category,
+            String categoryAmharic,
+            String categoryEmoji,
+            String neighborhood,
+            String neighborhoodAmharic,
+            boolean featured,
+            List<String> tags,
             List<TicketTypeDto> ticketTypes
     ) {}
 
@@ -60,6 +74,10 @@ public class EventDtos {
             String bannerImageUrl,
             String organizerName,
             String organizerId,
+            String category,
+            String neighborhood,
+            Boolean featured,
+            String tags,
             List<CreateTicketTypeRequest> ticketTypes
     ) {}
 
@@ -69,5 +87,28 @@ public class EventDtos {
             BigDecimal price,
             int totalCapacity,
             int maxPerUser
+    ) {}
+
+    public record CategoryFilterItemDto(
+            String code,
+            String englishName,
+            String amharicName,
+            String iconEmoji,
+            long eventCount
+    ) {}
+
+    public record NeighborhoodFilterItemDto(
+            String code,
+            String englishName,
+            String amharicName,
+            long eventCount
+    ) {}
+
+    public record FilterMetadataDto(
+            List<CategoryFilterItemDto> categories,
+            List<NeighborhoodFilterItemDto> neighborhoods,
+            BigDecimal minPrice,
+            BigDecimal maxPrice,
+            long totalPublishedEvents
     ) {}
 }

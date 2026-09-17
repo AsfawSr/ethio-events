@@ -46,6 +46,20 @@ public class Event {
     @Column(name = "status", nullable = false, length = 20)
     private EventStatus status = EventStatus.PUBLISHED;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "category", length = 50)
+    private EventCategory category = EventCategory.MUSIC_CONCERT;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "neighborhood", length = 50)
+    private Neighborhood neighborhood = Neighborhood.BOLE;
+
+    @Column(name = "featured", nullable = false)
+    private boolean featured = false;
+
+    @Column(name = "tags", length = 255)
+    private String tags = "";
+
     @OneToMany(mappedBy = "event", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<TicketType> ticketTypes = new ArrayList<>();
 
@@ -85,6 +99,14 @@ public class Event {
     public void setBannerImageUrl(String bannerImageUrl) { this.bannerImageUrl = bannerImageUrl; }
     public EventStatus getStatus() { return status; }
     public void setStatus(EventStatus status) { this.status = status; }
+    public EventCategory getCategory() { return category != null ? category : EventCategory.MUSIC_CONCERT; }
+    public void setCategory(EventCategory category) { this.category = category; }
+    public Neighborhood getNeighborhood() { return neighborhood != null ? neighborhood : Neighborhood.BOLE; }
+    public void setNeighborhood(Neighborhood neighborhood) { this.neighborhood = neighborhood; }
+    public boolean isFeatured() { return featured; }
+    public void setFeatured(boolean featured) { this.featured = featured; }
+    public String getTags() { return tags != null ? tags : ""; }
+    public void setTags(String tags) { this.tags = tags; }
     public List<TicketType> getTicketTypes() { return ticketTypes; }
     public void setTicketTypes(List<TicketType> ticketTypes) { this.ticketTypes = ticketTypes; }
     public Instant getCreatedAt() { return createdAt; }

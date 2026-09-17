@@ -117,6 +117,14 @@ public class OrganizerController {
             BigDecimal maxPrice = tiers != null ? tiers.stream().map(TicketType::getPrice).max(BigDecimal::compareTo).orElse(BigDecimal.ZERO) : BigDecimal.ZERO;
             boolean isSoldOut = tiers != null && tiers.stream().mapToInt(TicketType::getAvailableCapacity).sum() == 0;
 
+            List<String> tagsList = java.util.Arrays.stream(event.getTags().split(","))
+                    .map(String::trim)
+                    .filter(s -> !s.isBlank())
+                    .collect(Collectors.toList());
+
+            EventCategory cat = event.getCategory() != null ? event.getCategory() : EventCategory.MUSIC_CONCERT;
+            Neighborhood nh = event.getNeighborhood() != null ? event.getNeighborhood() : Neighborhood.BOLE;
+
             return new EventDtos.EventSummaryDto(
                     event.getId(),
                     event.getTitle(),
@@ -131,7 +139,14 @@ public class OrganizerController {
                     minPrice,
                     maxPrice,
                     "ETB",
-                    isSoldOut
+                    isSoldOut,
+                    cat.name(),
+                    cat.getAmharicName(),
+                    cat.getIconEmoji(),
+                    nh.getEnglishName(),
+                    nh.getAmharicName(),
+                    event.isFeatured(),
+                    tagsList
             );
         }).collect(Collectors.toList());
 
