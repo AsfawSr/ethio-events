@@ -59,6 +59,16 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleGeneralException(Exception ex) {
+        Throwable root = ex;
+        while (root.getCause() != null && root.getCause() != root) {
+            root = root.getCause();
+        }
+        String rootMsg = root.getMessage() != null ? root.getMessage() : "";
+        if (root instanceof java.io.IOException || rootMsg.contains("aborted") || rootMsg.contains("Broken pipe") || rootMsg.contains("Connection reset")) {
+            log.debug("Client closed stream connection: {}", rootMsg);
+            return null;
+        }
+
         log.error("Unhandled internal server error", ex);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(ApiResponse.error("INTERNAL_SERVER_ERROR", "An unexpected error occurred. Please try again later."));
