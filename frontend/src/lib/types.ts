@@ -56,6 +56,7 @@ export interface GuestReserveRequest {
   customerName: string;
   promoCode?: string;
   affiliateCode?: string;
+  selectedSeatIds?: string[];
 }
 
 export interface ValidatePromoResponse {
@@ -119,12 +120,16 @@ export interface AffiliateItem {
   bankAccountName?: string;
   commissionRate: number;
   totalClicks: number;
-  totalConversions: number;
-  totalSalesEtb: number;
-  totalCommissionEtb: number;
-  paidCommissionEtb: number;
-  unpaidCommissionEtb: number;
-  active: boolean;
+  totalSalesCount: number;
+  totalConversions?: number;
+  totalGrossRevenueEtb: number;
+  totalSalesEtb?: number;
+  totalCommissionEarnedEtb: number;
+  totalCommissionEtb?: number;
+  paidCommissionEtb?: number;
+  unpaidCommissionEtb?: number;
+  active?: boolean;
+  status: string;
   createdAt: string;
 }
 
@@ -132,8 +137,12 @@ export interface AffiliateReferralItem {
   id: string;
   orderNumber: string;
   eventTitle: string;
-  orderAmount: number;
-  commissionAmount: number;
+  orderAmountEtb: number;
+  orderAmount?: number;
+  commissionEarnedEtb: number;
+  commissionAmount?: number;
+  customerName: string;
+  customerPhone: string;
   status: string;
   createdAt: string;
 }
@@ -141,12 +150,12 @@ export interface AffiliateReferralItem {
 export interface AffiliateDashboardData {
   affiliate: AffiliateItem;
   recentReferrals: AffiliateReferralItem[];
-  conversionRate: number;
+  conversionRate?: number;
+  availableEvents: { id: string; title: string; slug: string; bannerImageUrl: string; minPrice: number }[];
 }
 
 export interface TrackClickResult {
-  valid: boolean;
-  affiliateCode?: string;
+  affiliateCode: string;
   promoterName?: string;
   commissionRate?: number;
 }
@@ -178,6 +187,7 @@ export interface OrderTicket {
   attendeeName: string;
   securityHash: string;
   status: string;
+  seatLabel?: string;
 }
 
 export interface OrderDetails {
@@ -211,6 +221,7 @@ export interface PublicTicketDetails {
   qrCodeBase64: string;
   qrPayload: string;
   securityHash: string;
+  seatLabel?: string;
 }
 
 export interface CreateTicketTypeRequest {
@@ -439,4 +450,59 @@ export interface TicketTransferHistoryItem {
   newSecurityHash: string;
   transferredAt: string;
 }
+
+export interface SeatItem {
+  id: string;
+  sectionId: string;
+  sectionName: string;
+  ticketTypeId?: string;
+  tierName: string;
+  price: number;
+  rowIdentifier: string;
+  seatNumber: string;
+  seatLabel: string;
+  gridRow: number;
+  gridCol: number;
+  status: 'AVAILABLE' | 'HELD' | 'BOOKED' | 'BLOCKED';
+  isAvailable: boolean;
+  heldUntil?: string;
+}
+
+export interface SeatingSectionItem {
+  id: string;
+  sectionName: string;
+  sectionType: 'TABLES' | 'THEATRE_ROWS' | 'BALCONY' | 'VIP_LOUNGE' | string;
+  layoutConfig?: string;
+  capacity: number;
+  ticketTypeId?: string;
+  tierName: string;
+  basePrice: number;
+  seats: SeatItem[];
+}
+
+export interface EventSeatingPlanData {
+  eventId: string;
+  eventTitle: string;
+  venueName: string;
+  sections: SeatingSectionItem[];
+  totalSeats: number;
+  availableSeats: number;
+  bookedSeats: number;
+  heldSeats: number;
+}
+
+export interface HoldSeatsRequest {
+  eventId: string;
+  sessionId: string;
+  seatIds: string[];
+}
+
+export interface HoldSeatsResponse {
+  success: boolean;
+  seatsHeldCount: number;
+  heldUntil: string;
+  sessionId: string;
+  heldSeats: SeatItem[];
+}
+
 

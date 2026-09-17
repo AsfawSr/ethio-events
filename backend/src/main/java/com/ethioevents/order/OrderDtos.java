@@ -26,14 +26,20 @@ public class OrderDtos {
 
             String promoCode,
 
-            String affiliateCode
+            String affiliateCode,
+
+            List<UUID> selectedSeatIds
     ) {
         public GuestReserveRequest(UUID ticketTypeId, int quantity, String customerPhone, String customerName) {
-            this(ticketTypeId, quantity, customerPhone, customerName, null, null);
+            this(ticketTypeId, quantity, customerPhone, customerName, null, null, null);
         }
 
         public GuestReserveRequest(UUID ticketTypeId, int quantity, String customerPhone, String customerName, String promoCode) {
-            this(ticketTypeId, quantity, customerPhone, customerName, promoCode, null);
+            this(ticketTypeId, quantity, customerPhone, customerName, promoCode, null, null);
+        }
+
+        public GuestReserveRequest(UUID ticketTypeId, int quantity, String customerPhone, String customerName, String promoCode, String affiliateCode) {
+            this(ticketTypeId, quantity, customerPhone, customerName, promoCode, affiliateCode, null);
         }
     }
 
@@ -80,6 +86,11 @@ public class OrderDtos {
             String tierName,
             String attendeeName,
             String securityHash,
-            String status
-    ) {}
+            String status,
+            String seatLabel
+    ) {
+        public OrderTicketDto(String ticketCode, String tierName, String attendeeName, String securityHash, String status) {
+            this(ticketCode, tierName, attendeeName, securityHash, status, null);
+        }
+    }
 }

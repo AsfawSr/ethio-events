@@ -358,5 +358,21 @@ export const api = {
 
   getTicketTransferHistory: (ticketCode: string) =>
     fetchApi<import('./types').TicketTransferHistoryItem[]>(`/tickets/public/transfers/${encodeURIComponent(ticketCode)}`),
+
+  // Interactive Venue Seating & VIP Table Floor Plan Engine
+  getEventSeatingPlan: (eventId: string) =>
+    fetchApi<import('./types').EventSeatingPlanData>(`/seating/event/${eventId}`),
+
+  holdSeats: (data: import('./types').HoldSeatsRequest) =>
+    fetchApi<import('./types').HoldSeatsResponse>('/seating/hold', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  releaseHeldSeats: (data: { eventId: string; sessionId: string; seatIds?: string[] }) =>
+    fetchApi<string>('/seating/release', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
 };
 

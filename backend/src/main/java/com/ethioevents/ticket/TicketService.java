@@ -64,7 +64,8 @@ public class TicketService {
             String status,
             String qrCodeBase64,
             String qrPayload,
-            String securityHash
+            String securityHash,
+            String seatLabel
     ) {}
 
     @Transactional
@@ -277,7 +278,8 @@ public class TicketService {
                 ticket.getStatus().name(),
                 qrCodeBase64,
                 qrPayload,
-                ticket.getSecurityHash()
+                ticket.getSecurityHash(),
+                ticket.getSeatLabel()
         );
     }
 

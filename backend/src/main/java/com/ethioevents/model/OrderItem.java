@@ -29,6 +29,9 @@ public class OrderItem {
     @Column(name = "subtotal", nullable = false, precision = 12, scale = 2)
     private BigDecimal subtotal;
 
+    @Column(name = "selected_seat_ids", columnDefinition = "TEXT")
+    private String selectedSeatIds;
+
     public OrderItem() {}
 
     public OrderItem(Order order, TicketType ticketType, int quantity, BigDecimal unitPrice) {
@@ -52,4 +55,6 @@ public class OrderItem {
     public void setUnitPrice(BigDecimal unitPrice) { this.unitPrice = unitPrice; }
     public BigDecimal getSubtotal() { return subtotal; }
     public void setSubtotal(BigDecimal subtotal) { this.subtotal = subtotal; }
+    public String getSelectedSeatIds() { return selectedSeatIds; }
+    public void setSelectedSeatIds(String selectedSeatIds) { this.selectedSeatIds = selectedSeatIds; }
 }

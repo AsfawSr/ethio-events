@@ -38,6 +38,7 @@ public class OrderService {
     private final TicketService ticketService;
     private final com.ethioevents.promo.PromoService promoService;
     private final com.ethioevents.affiliate.AffiliateService affiliateService;
+    private final com.ethioevents.seating.SeatingService seatingService;
 
     public OrderService(OrderRepository orderRepository,
                         OrderItemRepository orderItemRepository,
@@ -48,7 +49,8 @@ public class OrderService {
                         TicketReservationService ticketReservationService,
                         TicketService ticketService,
                         com.ethioevents.promo.PromoService promoService,
-                        com.ethioevents.affiliate.AffiliateService affiliateService) {
+                        com.ethioevents.affiliate.AffiliateService affiliateService,
+                        com.ethioevents.seating.SeatingService seatingService) {
         this.orderRepository = orderRepository;
         this.orderItemRepository = orderItemRepository;
         this.userRepository = userRepository;
@@ -59,6 +61,7 @@ public class OrderService {
         this.ticketService = ticketService;
         this.promoService = promoService;
         this.affiliateService = affiliateService;
+        this.seatingService = seatingService;
     }
 
     /**
@@ -123,6 +126,9 @@ public class OrderService {
 
         // 5. Create OrderItem
         OrderItem item = new OrderItem(savedOrder, ticketType, request.quantity(), ticketType.getPrice());
+        if (request.selectedSeatIds() != null && !request.selectedSeatIds().isEmpty()) {
+            item.setSelectedSeatIds(request.selectedSeatIds().stream().map(UUID::toString).collect(Collectors.joining(",")));
+        }
         orderItemRepository.save(item);
 
         log.info("Created pending reservation Order {} for {}", orderNumber, normalizedPhone);
@@ -156,7 +162,7 @@ public class OrderService {
                 .collect(Collectors.toList());
 
         List<OrderDtos.OrderTicketDto> ticketDtos = tickets.stream()
-                .map(t -> new OrderDtos.OrderTicketDto(t.getTicketCode(), t.getTicketType().getName(), t.getAttendeeName(), t.getSecurityHash(), t.getStatus().name()))
+                .map(t -> new OrderDtos.OrderTicketDto(t.getTicketCode(), t.getTicketType().getName(), t.getAttendeeName(), t.getSecurityHash(), t.getStatus().name(), t.getSeatLabel()))
                 .collect(Collectors.toList());
 
         return new OrderDtos.OrderDetailsResponse(
@@ -190,7 +196,7 @@ public class OrderService {
                     .collect(Collectors.toList());
 
             List<OrderDtos.OrderTicketDto> ticketDtos = tickets.stream()
-                    .map(t -> new OrderDtos.OrderTicketDto(t.getTicketCode(), t.getTicketType().getName(), t.getAttendeeName(), t.getSecurityHash(), t.getStatus().name()))
+                    .map(t -> new OrderDtos.OrderTicketDto(t.getTicketCode(), t.getTicketType().getName(), t.getAttendeeName(), t.getSecurityHash(), t.getStatus().name(), t.getSeatLabel()))
                     .collect(Collectors.toList());
 
             return new OrderDtos.OrderDetailsResponse(
@@ -245,7 +251,24 @@ public class OrderService {
         transactionRepository.save(tx);
 
         // 3. Issue cryptographic tickets with Ed25519 signatures
-        ticketService.generateTicketsForOrder(savedOrder);
+        List<Ticket> generatedTickets = ticketService.generateTicketsForOrder(savedOrder);
+
+        // 3b. Confirm and link assigned reserved seats if present
+        List<OrderItem> items = orderItemRepository.findByOrderId(savedOrder.getId());
+        for (OrderItem item : items) {
+            if (item.getSelectedSeatIds() != null && !item.getSelectedSeatIds().isBlank()) {
+                try {
+                    List<UUID> seatIds = java.util.Arrays.stream(item.getSelectedSeatIds().split(","))
+                            .map(String::trim)
+                            .filter(s -> !s.isEmpty())
+                            .map(UUID::fromString)
+                            .collect(Collectors.toList());
+                    seatingService.confirmSeatsForOrder(savedOrder, seatIds, generatedTickets);
+                } catch (Exception e) {
+                    log.warn("Failed to confirm seats for order {}: {}", orderNumber, e.getMessage());
+                }
+            }
+        }
 
         // 4. Record promoter affiliate commission referral if attached
         if (savedOrder.getAffiliateCode() != null && !savedOrder.getAffiliateCode().isBlank()) {

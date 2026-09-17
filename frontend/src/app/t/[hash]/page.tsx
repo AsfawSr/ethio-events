@@ -348,9 +348,16 @@ export default function StandaloneTicketPassPage() {
           </h1>
 
           <div className="flex items-center justify-between text-xs pt-1">
-            <span className="font-bold text-amber-400 bg-amber-400/15 border border-amber-400/30 px-3 py-1 rounded-xl">
-              {ticket.tierName}
-            </span>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="font-bold text-amber-400 bg-amber-400/15 border border-amber-400/30 px-3 py-1 rounded-xl">
+                {ticket.tierName}
+              </span>
+              {ticket.seatLabel && (
+                <span className="font-bold text-emerald-300 bg-emerald-950 border border-emerald-500/40 px-3 py-1 rounded-xl">
+                  🪑 {ticket.seatLabel}
+                </span>
+              )}
+            </div>
             <span className="text-slate-400 font-mono font-bold">
               {ticket.ticketCode}
             </span>
