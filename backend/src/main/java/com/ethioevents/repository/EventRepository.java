@@ -13,6 +13,7 @@ import java.util.UUID;
 public interface EventRepository extends JpaRepository<Event, UUID> {
     Optional<Event> findBySlug(String slug);
     List<Event> findByStatusOrderByStartTimeUtcAsc(EventStatus status);
+    List<Event> findByStatusAndFeaturedTrueOrderByStartTimeUtcAsc(EventStatus status);
     List<Event> findByStatusOrderByCreatedAtDesc(EventStatus status);
     List<Event> findByOrderByCreatedAtDesc();
     List<Event> findByOrganizerIdOrderByCreatedAtDesc(UUID organizerId);

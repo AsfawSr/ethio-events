@@ -32,6 +32,13 @@ export interface EventSummary {
   maxPrice: number;
   currency: string;
   isSoldOut: boolean;
+  category?: string;
+  categoryAmharic?: string;
+  categoryEmoji?: string;
+  neighborhood?: string;
+  neighborhoodAmharic?: string;
+  featured?: boolean;
+  tags?: string[];
 }
 
 export interface EventDetail {
@@ -46,7 +53,47 @@ export interface EventDetail {
   bannerImageUrl: string;
   status: string;
   organizerName: string;
+  category?: string;
+  categoryAmharic?: string;
+  categoryEmoji?: string;
+  neighborhood?: string;
+  neighborhoodAmharic?: string;
+  featured?: boolean;
+  tags?: string[];
   ticketTypes: TicketType[];
+}
+
+export interface CategoryFilterItem {
+  code: string;
+  englishName: string;
+  amharicName: string;
+  iconEmoji: string;
+  eventCount: number;
+}
+
+export interface NeighborhoodFilterItem {
+  code: string;
+  englishName: string;
+  amharicName: string;
+  eventCount: number;
+}
+
+export interface FilterMetadata {
+  categories: CategoryFilterItem[];
+  neighborhoods: NeighborhoodFilterItem[];
+  minPrice: number;
+  maxPrice: number;
+  totalPublishedEvents: number;
+}
+
+export interface SearchEventsParams {
+  q?: string;
+  category?: string;
+  neighborhood?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  featured?: boolean;
+  sort?: 'START_TIME_ASC' | 'PRICE_LOW_HIGH' | 'PRICE_HIGH_LOW' | 'FEATURED_FIRST' | string;
 }
 
 export interface GuestReserveRequest {
@@ -242,6 +289,10 @@ export interface CreateEventRequest {
   bannerImageUrl: string;
   organizerName: string;
   organizerId?: string;
+  category?: string;
+  neighborhood?: string;
+  featured?: boolean;
+  tags?: string;
   ticketTypes: CreateTicketTypeRequest[];
 }
 

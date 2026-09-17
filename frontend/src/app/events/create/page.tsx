@@ -68,6 +68,10 @@ export default function CreateEventPage() {
   const [venueAddress, setVenueAddress] = useState('');
   const [bannerImageUrl, setBannerImageUrl] = useState(PRESET_BANNERS[0].url);
   const [organizerName, setOrganizerName] = useState('Addis Events Group');
+  const [category, setCategory] = useState('MUSIC_CONCERT');
+  const [neighborhood, setNeighborhood] = useState('BOLE');
+  const [tags, setTags] = useState('');
+  const [featured, setFeatured] = useState(false);
 
   useEffect(() => {
     const session = authStorage.getSession();
@@ -208,6 +212,10 @@ export default function CreateEventPage() {
         bannerImageUrl: bannerImageUrl.trim(),
         organizerName: organizerName.trim() || 'Addis Events Organizer',
         organizerId: organizerSession?.organizerId,
+        category,
+        neighborhood,
+        featured,
+        tags: tags.trim(),
         ticketTypes: ticketTypes.map((t) => ({
           name: t.name.trim(),
           description: t.description.trim(),
@@ -366,6 +374,68 @@ export default function CreateEventPage() {
                 value={organizerName}
                 onChange={(e) => setOrganizerName(e.target.value)}
                 placeholder="e.g. Habesha Promotions, Awaqi, Tech Addis"
+                className="w-full rounded-xl border border-slate-700 bg-slate-800/80 px-4 py-3 text-white placeholder-slate-500 focus:border-amber-400 focus:outline-none focus:ring-1 focus:ring-amber-400 transition"
+              />
+            </div>
+
+            {/* Category & Neighborhood Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-semibold text-slate-300 mb-2">
+                  Event Category <span className="text-amber-400">*</span>
+                </label>
+                <select
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value)}
+                  className="w-full rounded-xl border border-slate-700 bg-slate-800/80 px-4 py-3 text-white focus:border-amber-400 focus:outline-none focus:ring-1 focus:ring-amber-400 transition"
+                >
+                  <option value="MUSIC_CONCERT">🎵 Concerts & Live Music (ኮንሰርት እና ሙዚቃ)</option>
+                  <option value="TECH_SUMMIT">💻 Tech, AI & Startups (ቴክኖሎጂ እና AI)</option>
+                  <option value="CULTURE_FESTIVAL">☕ Culture, Buna & Food (ባህል እና ቡና)</option>
+                  <option value="COMEDY_THEATRE">🎭 Comedy, Theatre & Jazz (ኮሜዲ እና ቴአትር)</option>
+                  <option value="SPORTS_FITNESS">🏃 Sports, 10K & Marathon (ስፖርት እና ማራቶን)</option>
+                  <option value="NIGHTLIFE_PARTY">🌙 Nightlife & DJ Sets (የምሽት ፕሮግራም)</option>
+                  <option value="ART_EXHIBITION">🎨 Art & Photography Expo (ኪነ-ጥበብ እና ኤግዚቢሽን)</option>
+                  <option value="BUSINESS_EXPO">💼 Business & Trade Expo (የንግድ ትርዒት)</option>
+                  <option value="OTHER">🎟️ Special Events (ልዩ ዝግጅት)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-slate-300 mb-2">
+                  Neighborhood / Sub-City <span className="text-amber-400">*</span>
+                </label>
+                <select
+                  value={neighborhood}
+                  onChange={(e) => setNeighborhood(e.target.value)}
+                  className="w-full rounded-xl border border-slate-700 bg-slate-800/80 px-4 py-3 text-white focus:border-amber-400 focus:outline-none focus:ring-1 focus:ring-amber-400 transition"
+                >
+                  <option value="BOLE">📍 Bole (ቦሌ)</option>
+                  <option value="KAZANCHIS">📍 Kazanchis (ካዛንቺስ)</option>
+                  <option value="SARBET">📍 Sarbet / Old Airport (ሳርቤት)</option>
+                  <option value="PIASSA">📍 Piassa / Arada (ፒያሳ)</option>
+                  <option value="MESKEL_SQUARE">📍 Meskel Square (መስቀል አደባባይ)</option>
+                  <option value="MEXICO">📍 Mexico / Stadium (ሜክሲኮ)</option>
+                  <option value="ENTOTO">📍 Entoto Hills (እንጦጦ)</option>
+                  <option value="CMC">📍 CMC / Ayat (ሲኤምሲ)</option>
+                  <option value="GERJI">📍 Gerji / Imperial (ገርጂ)</option>
+                  <option value="BISHOFTU">📍 Bishoftu / Kuriftu (ቢሾፍቱ)</option>
+                  <option value="HAWASSA">📍 Hawassa Lake (ሐዋሳ)</option>
+                  <option value="OTHER">📍 Other Locations (ሌሎች)</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Tags Input */}
+            <div>
+              <label className="block text-sm font-semibold text-slate-300 mb-2">
+                Event Tags & Keywords <span className="text-xs font-normal text-slate-400">(comma separated)</span>
+              </label>
+              <input
+                type="text"
+                value={tags}
+                onChange={(e) => setTags(e.target.value)}
+                placeholder="e.g. Jazz, LiveBand, Buna, VIP, Networking"
                 className="w-full rounded-xl border border-slate-700 bg-slate-800/80 px-4 py-3 text-white placeholder-slate-500 focus:border-amber-400 focus:outline-none focus:ring-1 focus:ring-amber-400 transition"
               />
             </div>

@@ -53,8 +53,22 @@ async function fetchApi<T>(endpoint: string, options?: RequestInit): Promise<T> 
 }
 
 export const api = {
-  // Public Event Discovery & Registration
-  getEvents: () => fetchApi<EventSummary[]>('/events'),
+  // Public Event Discovery, Categorization, Neighborhoods & Search
+  getEvents: (params?: import('./types').SearchEventsParams) => {
+    if (!params) return fetchApi<EventSummary[]>('/events');
+    const query = new URLSearchParams();
+    if (params.q) query.set('q', params.q);
+    if (params.category && params.category !== 'ALL') query.set('category', params.category);
+    if (params.neighborhood && params.neighborhood !== 'ALL') query.set('neighborhood', params.neighborhood);
+    if (params.minPrice !== undefined) query.set('minPrice', params.minPrice.toString());
+    if (params.maxPrice !== undefined) query.set('maxPrice', params.maxPrice.toString());
+    if (params.featured !== undefined) query.set('featured', params.featured.toString());
+    if (params.sort) query.set('sort', params.sort);
+    const queryString = query.toString();
+    return fetchApi<EventSummary[]>(`/events${queryString ? `?${queryString}` : ''}`);
+  },
+  getFeaturedEvents: () => fetchApi<EventSummary[]>('/events/featured'),
+  getFilterMetadata: () => fetchApi<import('./types').FilterMetadata>('/events/meta/filters'),
   getEventBySlug: (slug: string) => fetchApi<EventDetail>(`/events/${slug}`),
   createEvent: (data: any) =>
     fetchApi<EventDetail>('/events', {
