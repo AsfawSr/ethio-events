@@ -56,4 +56,9 @@ export const authStorage = {
     const session = authStorage.getSession();
     return !!session && session.role === 'ORGANIZER';
   },
+
+  isAdmin: (): boolean => {
+    const session = authStorage.getSession();
+    return !!session && session.role === 'ADMIN';
+  },
 };

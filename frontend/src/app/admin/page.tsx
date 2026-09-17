@@ -31,19 +31,43 @@ import {
   Radio,
   Calculator,
   ArrowUpRight,
-  Check
+  Check,
+  Lock,
+  LogOut,
+  KeyRound,
+  Fingerprint,
+  Shield,
+  Clock,
+  ChevronRight,
+  UserCheck
 } from 'lucide-react';
 import { api } from '@/lib/api';
+import { authStorage } from '@/lib/auth';
 import {
   AdminAnalytics,
   EventModerationItem,
   AdminOrganizerItem,
   SmsLogItem,
   SettlementSummaryItem,
-  SettlementCalculation
+  SettlementCalculation,
+  OrganizerSession
 } from '@/lib/types';
 
 export default function AdminPortalPage() {
+  // Session & Auth state
+  const [session, setSession] = useState<OrganizerSession | null>(null);
+  const [authChecking, setAuthChecking] = useState(true);
+
+  // Admin Login Gateway Form State
+  const [loginMode, setLoginMode] = useState<'passcode' | 'otp'>('passcode');
+  const [adminPhone, setAdminPhone] = useState('+251911000001');
+  const [adminPasscode, setAdminPasscode] = useState('Admin@EthioEvents2026!');
+  const [otpCode, setOtpCode] = useState('');
+  const [otpSent, setOtpSent] = useState(false);
+  const [loginLoading, setLoginLoading] = useState(false);
+  const [loginError, setLoginError] = useState<string | null>(null);
+
+  // Dashboard Data State
   const [analytics, setAnalytics] = useState<AdminAnalytics | null>(null);
   const [events, setEvents] = useState<EventModerationItem[]>([]);
   const [organizers, setOrganizers] = useState<AdminOrganizerItem[]>([]);
@@ -72,14 +96,40 @@ export default function AdminPortalPage() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    loadAdminData();
+    const curSession = authStorage.getSession();
+    setSession(curSession);
+    setAuthChecking(false);
+
+    if (curSession && curSession.token && curSession.role === 'ADMIN') {
+      loadAdminData();
+    } else {
+      setLoading(false);
+    }
+
+    const handleAuthChange = () => {
+      const s = authStorage.getSession();
+      setSession(s);
+      if (s && s.token && s.role === 'ADMIN') {
+        loadAdminData();
+      } else {
+        setLoading(false);
+      }
+    };
+
+    window.addEventListener('ethioevents_auth_changed', handleAuthChange);
+    return () => window.removeEventListener('ethioevents_auth_changed', handleAuthChange);
   }, [statusFilter, activeTab]);
 
   const loadAdminData = async () => {
     try {
       setRefreshing(true);
       const [analyticsData, eventsData, organizersData, smsLogsData, settlementsData] = await Promise.all([
-        api.getAdminAnalytics().catch(() => null),
+        api.getAdminAnalytics().catch((err) => {
+          if (err?.message?.includes('401') || err?.message?.includes('UNAUTHORIZED') || err?.message?.includes('403')) {
+            authStorage.clearSession();
+          }
+          return null;
+        }),
         api.getAdminEvents(statusFilter === 'ALL' ? undefined : statusFilter).catch(() => []),
         api.getAdminOrganizers().catch(() => []),
         api.getAdminSmsLogs(smsPhoneFilter || undefined).catch(() => []),
@@ -96,6 +146,82 @@ export default function AdminPortalPage() {
     } finally {
       setLoading(false);
       setRefreshing(false);
+    }
+  };
+
+  // Auth Handlers
+  const handlePasscodeLogin = async (e?: React.FormEvent, customPass?: string) => {
+    if (e) e.preventDefault();
+    const pass = customPass !== undefined ? customPass : adminPasscode;
+    if (!pass) {
+      setLoginError('Please enter the Admin Security Passkey.');
+      return;
+    }
+    try {
+      setLoginLoading(true);
+      setLoginError(null);
+      const res = await api.adminLogin({
+        phoneNumber: adminPhone,
+        passcode: pass,
+      });
+      authStorage.setSession(res);
+      setSession(res);
+      showToast('🛡️ Welcome, EthioEvents Platform Administrator!');
+      await loadAdminData();
+    } catch (err: any) {
+      setLoginError(err.message || 'Authentication failed. Please verify your security key.');
+    } finally {
+      setLoginLoading(false);
+    }
+  };
+
+  const handleRequestOtp = async () => {
+    if (!adminPhone) {
+      setLoginError('Please enter an admin phone number.');
+      return;
+    }
+    try {
+      setLoginLoading(true);
+      setLoginError(null);
+      await api.requestOtp(adminPhone);
+      setOtpSent(true);
+      showToast(`Verification code dispatched to ${adminPhone}`);
+    } catch (err: any) {
+      setLoginError(err.message || 'Failed to dispatch SMS verification code.');
+    } finally {
+      setLoginLoading(false);
+    }
+  };
+
+  const handleVerifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!otpCode) {
+      setLoginError('Please enter the 6-digit SMS verification code.');
+      return;
+    }
+    try {
+      setLoginLoading(true);
+      setLoginError(null);
+      const res = await api.adminLogin({
+        phoneNumber: adminPhone,
+        otpCode: otpCode,
+      });
+      authStorage.setSession(res);
+      setSession(res);
+      showToast('🛡️ Phone verification successful! Governance console unlocked.');
+      await loadAdminData();
+    } catch (err: any) {
+      setLoginError(err.message || 'Invalid or expired SMS OTP code.');
+    } finally {
+      setLoginLoading(false);
+    }
+  };
+
+  const handleLogout = () => {
+    if (confirm('Are you sure you want to terminate this Governance Admin session?')) {
+      authStorage.clearSession();
+      setSession(null);
+      showToast('🔒 Governance session locked.');
     }
   };
 
@@ -228,6 +354,243 @@ export default function AdminPortalPage() {
     );
   });
 
+  // 1. Initial Loading Screen
+  if (authChecking) {
+    return (
+      <div className="min-h-screen bg-[#080C14] flex flex-col items-center justify-center text-slate-300">
+        <div className="relative mb-4">
+          <div className="h-16 w-16 rounded-3xl bg-amber-500/20 border border-amber-500/30 animate-ping absolute inset-0"></div>
+          <div className="h-16 w-16 rounded-3xl bg-gradient-to-tr from-amber-500 to-yellow-300 flex items-center justify-center text-black font-black text-2xl shadow-glowGold relative">
+            🛡️
+          </div>
+        </div>
+        <p className="text-sm font-semibold tracking-wider uppercase text-amber-400">Verifying Governance Credentials...</p>
+      </div>
+    );
+  }
+
+  // 2. Unauthenticated Admin Gate Screen
+  if (!session || !session.token || session.role !== 'ADMIN') {
+    return (
+      <div className="min-h-screen bg-[#080C14] text-slate-100 flex flex-col justify-center items-center py-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
+        {/* Background Decorative Lighting */}
+        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute bottom-10 right-10 w-80 h-80 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none" />
+
+        {/* Toast Notification */}
+        {toastMessage && (
+          <div className="fixed bottom-6 right-6 z-50 rounded-2xl border border-amber-500/40 bg-slate-900/95 backdrop-blur-xl p-4 text-sm font-semibold text-amber-300 shadow-2xl shadow-amber-500/20 animate-in fade-in slide-in-from-bottom-5">
+            {toastMessage}
+          </div>
+        )}
+
+        <div className="w-full max-w-md space-y-6 relative z-10">
+          {/* Brand Header */}
+          <div className="text-center space-y-2">
+            <div className="inline-flex h-16 w-16 items-center justify-center rounded-3xl bg-gradient-to-tr from-amber-500 via-amber-400 to-yellow-300 text-black font-black text-3xl shadow-glowGold mb-2">
+              🛡️
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+              Ethio<span className="text-amber-400">Events</span> Governance
+            </h1>
+            <p className="text-xs font-semibold uppercase tracking-widest text-slate-400 flex items-center justify-center gap-1.5">
+              <Lock className="h-3.5 w-3.5 text-amber-400" />
+              Restricted Platform Administrator Access
+            </p>
+          </div>
+
+          {/* Main Card */}
+          <div className="rounded-3xl border border-slate-800 bg-slate-900/90 backdrop-blur-2xl p-6 sm:p-8 shadow-2xl space-y-6">
+            {/* Mode Switcher */}
+            <div className="flex rounded-2xl bg-slate-950/80 p-1 border border-slate-800/80">
+              <button
+                type="button"
+                onClick={() => { setLoginMode('passcode'); setLoginError(null); }}
+                className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-xs font-bold rounded-xl transition-all ${
+                  loginMode === 'passcode'
+                    ? 'bg-gradient-to-r from-amber-500 to-amber-400 text-black shadow-md'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <KeyRound className="h-4 w-4" />
+                Security Passkey
+              </button>
+              <button
+                type="button"
+                onClick={() => { setLoginMode('otp'); setLoginError(null); }}
+                className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-xs font-bold rounded-xl transition-all ${
+                  loginMode === 'otp'
+                    ? 'bg-gradient-to-r from-amber-500 to-amber-400 text-black shadow-md'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <MessageSquare className="h-4 w-4" />
+                SMS Two-Factor (2FA)
+              </button>
+            </div>
+
+            {/* Error Banner */}
+            {loginError && (
+              <div className="rounded-2xl border border-red-500/30 bg-red-500/10 p-3.5 text-xs text-red-300 flex items-start gap-2.5 animate-in fade-in">
+                <ShieldAlert className="h-4 w-4 text-red-400 shrink-0 mt-0.5" />
+                <span>{loginError}</span>
+              </div>
+            )}
+
+            {/* Form Mode 1: Passkey */}
+            {loginMode === 'passcode' && (
+              <form onSubmit={handlePasscodeLogin} className="space-y-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-slate-300">Admin Identifier (Phone)</label>
+                  <div className="relative">
+                    <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                    <input
+                      type="tel"
+                      value={adminPhone}
+                      onChange={(e) => setAdminPhone(e.target.value)}
+                      placeholder="+251911000001"
+                      className="w-full rounded-xl border border-slate-700 bg-slate-950/80 pl-10 pr-4 py-2.5 text-sm text-white placeholder-slate-500 focus:border-amber-400 focus:outline-none focus:ring-1 focus:ring-amber-400"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-slate-300">Master Governance Passcode</label>
+                  <div className="relative">
+                    <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                    <input
+                      type="password"
+                      value={adminPasscode}
+                      onChange={(e) => setAdminPasscode(e.target.value)}
+                      placeholder="••••••••••••••••"
+                      className="w-full rounded-xl border border-slate-700 bg-slate-950/80 pl-10 pr-4 py-2.5 text-sm text-white placeholder-slate-500 focus:border-amber-400 focus:outline-none focus:ring-1 focus:ring-amber-400"
+                      required
+                    />
+                  </div>
+                </div>
+
+                {/* Quick 1-Click Demo Admin Button */}
+                <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-3 flex items-center justify-between">
+                  <div className="text-[11px] text-amber-300/80">
+                    <span className="font-bold text-amber-300">Demo Passkey:</span> <code className="bg-black/40 px-1 py-0.5 rounded text-amber-200">Admin@EthioEvents2026!</code>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAdminPhone('+251911000001');
+                      setAdminPasscode('Admin@EthioEvents2026!');
+                      handlePasscodeLogin(undefined, 'Admin@EthioEvents2026!');
+                    }}
+                    className="text-xs font-bold text-amber-400 hover:text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 px-2.5 py-1 rounded-lg transition active:scale-95"
+                  >
+                    ⚡ Auto-Fill & Login
+                  </button>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={loginLoading}
+                  className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-300 hover:from-amber-400 hover:to-yellow-200 py-3 text-sm font-bold text-black shadow-glowGold transition-all disabled:opacity-50 active:scale-98"
+                >
+                  {loginLoading ? (
+                    <RefreshCw className="h-4 w-4 animate-spin text-black" />
+                  ) : (
+                    <ShieldCheck className="h-4 w-4 text-black" />
+                  )}
+                  <span>{loginLoading ? 'Authenticating...' : 'Authorize Governance Access'}</span>
+                </button>
+              </form>
+            )}
+
+            {/* Form Mode 2: SMS OTP */}
+            {loginMode === 'otp' && (
+              <form onSubmit={handleVerifyOtp} className="space-y-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-slate-300">Registered Admin Phone</label>
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                      <input
+                        type="tel"
+                        value={adminPhone}
+                        onChange={(e) => setAdminPhone(e.target.value)}
+                        placeholder="+251911000001"
+                        className="w-full rounded-xl border border-slate-700 bg-slate-950/80 pl-10 pr-4 py-2.5 text-sm text-white placeholder-slate-500 focus:border-amber-400 focus:outline-none"
+                        required
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleRequestOtp}
+                      disabled={loginLoading}
+                      className="rounded-xl border border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 px-3.5 py-2.5 text-xs font-bold text-amber-300 transition shrink-0 disabled:opacity-50"
+                    >
+                      {otpSent ? 'Resend' : 'Send Code'}
+                    </button>
+                  </div>
+                </div>
+
+                {otpSent && (
+                  <div className="space-y-1.5 animate-in fade-in">
+                    <label className="text-xs font-semibold text-slate-300">6-Digit Verification Code</label>
+                    <div className="relative">
+                      <KeyRound className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                      <input
+                        type="text"
+                        maxLength={6}
+                        value={otpCode}
+                        onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
+                        placeholder="123456"
+                        className="w-full rounded-xl border border-slate-700 bg-slate-950/80 pl-10 pr-4 py-2.5 text-sm text-white font-mono tracking-widest text-center placeholder-slate-600 focus:border-amber-400 focus:outline-none"
+                        required
+                      />
+                    </div>
+                    <p className="text-[11px] text-slate-400">
+                      Check your SMS inbox for the EthioTelecom / AfricasTalking verification code.
+                    </p>
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={loginLoading || !otpSent || otpCode.length !== 6}
+                  className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-300 hover:from-amber-400 hover:to-yellow-200 py-3 text-sm font-bold text-black shadow-glowGold transition-all disabled:opacity-50 active:scale-98"
+                >
+                  {loginLoading ? (
+                    <RefreshCw className="h-4 w-4 animate-spin text-black" />
+                  ) : (
+                    <UserCheck className="h-4 w-4 text-black" />
+                  )}
+                  <span>{loginLoading ? 'Verifying...' : 'Verify OTP & Unlock'}</span>
+                </button>
+              </form>
+            )}
+
+            {/* Regulatory & Security Compliance */}
+            <div className="border-t border-slate-800 pt-4 flex items-center justify-between text-[10px] text-slate-500">
+              <span className="flex items-center gap-1">
+                <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" />
+                256-Bit TLS / JWT Audited
+              </span>
+              <span>FDRE Proclamation 1205/2020</span>
+            </div>
+          </div>
+
+          <div className="text-center">
+            <Link
+              href="/"
+              className="text-xs text-slate-400 hover:text-amber-400 inline-flex items-center gap-1 transition"
+            >
+              ← Return to EthioEvents Public Portal
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 3. Authenticated Admin Dashboard
   return (
     <div className="min-h-screen bg-[#080C14] text-slate-100 py-10 px-4 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-7xl space-y-8">
@@ -237,6 +600,32 @@ export default function AdminPortalPage() {
             {toastMessage}
           </div>
         )}
+
+        {/* Top Active Session Governance Bar */}
+        <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 backdrop-blur-xl px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-3">
+            <div className="h-2.5 w-2.5 rounded-full bg-emerald-400 animate-pulse" />
+            <div className="flex items-center gap-2">
+              <span className="font-bold text-emerald-300">Governance Session Active:</span>
+              <span className="text-slate-200 font-semibold">{session.fullName || 'EthioEvents Admin'}</span>
+              <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded text-[10px] font-mono">
+                {session.phoneNumber || '+251911000001'}
+              </span>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="hidden md:inline text-slate-400 text-[11px]">
+              🔒 256-Bit AES / Ed25519 Verified
+            </span>
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-1.5 text-xs font-bold text-red-300 hover:text-red-200 bg-red-500/15 hover:bg-red-500/25 border border-red-500/30 px-3 py-1.5 rounded-xl transition active:scale-95"
+            >
+              <LogOut className="h-3.5 w-3.5 text-red-400" />
+              Sign Out & Lock
+            </button>
+          </div>
+        </div>
 
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-white/10 pb-6">

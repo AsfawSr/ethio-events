@@ -19,6 +19,12 @@ public class AuthDtos {
             String fullName // Optional name if first time user
     ) {}
 
+    public record AdminLoginRequestDto(
+            String phoneNumber,
+            String passcode,
+            String otpCode
+    ) {}
+
     public record AuthResponseDto(
             String token,
             String userId,

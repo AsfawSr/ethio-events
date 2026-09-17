@@ -182,6 +182,12 @@ export const api = {
       }
     ),
 
+  adminLogin: (credentials: { phoneNumber?: string; passcode?: string; otpCode?: string }) =>
+    fetchApi<OrganizerSession>('/auth/admin/login', {
+      method: 'POST',
+      body: JSON.stringify(credentials),
+    }),
+
   // Venue Gate Validation & Offline Sync
   getGateManifest: (eventId: string, since?: string) =>
     fetchApi<{
