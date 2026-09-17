@@ -2,5 +2,6 @@ package com.ethioevents.model;
 
 public enum PaymentGateway {
     TELEBIRR,
-    CHAPA
+    CHAPA,
+    STRIPE_DIASPORA
 }

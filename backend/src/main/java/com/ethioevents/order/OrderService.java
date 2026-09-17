@@ -39,6 +39,8 @@ public class OrderService {
     private final com.ethioevents.promo.PromoService promoService;
     private final com.ethioevents.affiliate.AffiliateService affiliateService;
     private final com.ethioevents.seating.SeatingService seatingService;
+    private final com.ethioevents.payment.currency.CurrencyExchangeService currencyExchangeService;
+    private final com.ethioevents.auth.SmsGatewayService smsGatewayService;
 
     public OrderService(OrderRepository orderRepository,
                         OrderItemRepository orderItemRepository,
@@ -50,7 +52,9 @@ public class OrderService {
                         TicketService ticketService,
                         com.ethioevents.promo.PromoService promoService,
                         com.ethioevents.affiliate.AffiliateService affiliateService,
-                        com.ethioevents.seating.SeatingService seatingService) {
+                        com.ethioevents.seating.SeatingService seatingService,
+                        com.ethioevents.payment.currency.CurrencyExchangeService currencyExchangeService,
+                        com.ethioevents.auth.SmsGatewayService smsGatewayService) {
         this.orderRepository = orderRepository;
         this.orderItemRepository = orderItemRepository;
         this.userRepository = userRepository;
@@ -62,6 +66,8 @@ public class OrderService {
         this.promoService = promoService;
         this.affiliateService = affiliateService;
         this.seatingService = seatingService;
+        this.currencyExchangeService = currencyExchangeService;
+        this.smsGatewayService = smsGatewayService;
     }
 
     /**
@@ -107,7 +113,20 @@ public class OrderService {
         Instant reservedUntil = Instant.now().plus(Duration.ofMinutes(10));
         String orderNumber = "ORD-" + System.currentTimeMillis() % 1000000 + "-" + (1000 + random.nextInt(9000));
 
-        // 4. Create Order
+        // 4. Multi-currency and Gifting parameters
+        String targetCurrency = request.currency() != null && !request.currency().isBlank()
+                ? request.currency().toUpperCase().trim()
+                : "ETB";
+        BigDecimal exchangeRate = currencyExchangeService.getExchangeRate(targetCurrency);
+        BigDecimal foreignAmount = currencyExchangeService.convertEtbToForeign(totalAmount, targetCurrency);
+
+        boolean isGift = Boolean.TRUE.equals(request.isGift());
+        String normalizedRecipientPhone = null;
+        if (isGift && request.giftRecipientPhone() != null && !request.giftRecipientPhone().isBlank()) {
+            normalizedRecipientPhone = PhoneNormalizer.normalize(request.giftRecipientPhone());
+        }
+
+        // 5. Create Order
         Order order = new Order();
         order.setOrderNumber(orderNumber);
         order.setUser(user);
@@ -115,7 +134,19 @@ public class OrderService {
         order.setCustomerPhone(normalizedPhone);
         order.setCustomerName(request.customerName().trim());
         order.setTotalAmount(totalAmount);
-        order.setCurrency("ETB");
+        order.setCurrency(targetCurrency);
+        order.setExchangeRate(exchangeRate);
+        order.setForeignAmount(foreignAmount);
+        order.setIsGift(isGift);
+        if (isGift) {
+            order.setGiftRecipientName(request.giftRecipientName() != null && !request.giftRecipientName().isBlank()
+                    ? request.giftRecipientName().trim()
+                    : "Event Guest");
+            order.setGiftRecipientPhone(normalizedRecipientPhone != null ? normalizedRecipientPhone : normalizedPhone);
+            order.setGiftMessage(request.giftMessage() != null ? request.giftMessage().trim() : "");
+            order.setPurchaserEmail(request.purchaserEmail() != null ? request.purchaserEmail().trim() : "");
+            order.setPurchaserCountry(request.purchaserCountry() != null ? request.purchaserCountry().trim() : "");
+        }
         order.setStatus(OrderStatus.PENDING);
         order.setReservedUntilUtc(reservedUntil);
         if (request.affiliateCode() != null && !request.affiliateCode().isBlank()) {
@@ -124,14 +155,15 @@ public class OrderService {
 
         Order savedOrder = orderRepository.save(order);
 
-        // 5. Create OrderItem
+        // 6. Create OrderItem
         OrderItem item = new OrderItem(savedOrder, ticketType, request.quantity(), ticketType.getPrice());
         if (request.selectedSeatIds() != null && !request.selectedSeatIds().isEmpty()) {
             item.setSelectedSeatIds(request.selectedSeatIds().stream().map(UUID::toString).collect(Collectors.joining(",")));
         }
         orderItemRepository.save(item);
 
-        log.info("Created pending reservation Order {} for {}", orderNumber, normalizedPhone);
+        log.info("Created pending reservation Order {} for {} (Currency: {} {}, Gift: {})",
+                orderNumber, normalizedPhone, foreignAmount, targetCurrency, isGift);
 
         long expiresInSeconds = Duration.between(Instant.now(), reservedUntil).getSeconds();
 
@@ -142,7 +174,12 @@ public class OrderService {
                 request.quantity(),
                 ticketType.getPrice(),
                 totalAmount,
-                "ETB",
+                targetCurrency,
+                foreignAmount,
+                exchangeRate,
+                isGift,
+                savedOrder.getGiftRecipientName(),
+                savedOrder.getGiftRecipientPhone(),
                 OrderStatus.PENDING.name(),
                 reservedUntil.toString(),
                 expiresInSeconds,
@@ -176,6 +213,15 @@ public class OrderService {
                 order.getCustomerPhone(),
                 order.getTotalAmount(),
                 order.getCurrency(),
+                order.getForeignAmount(),
+                order.getExchangeRate(),
+                order.getPaymentGateway() != null ? order.getPaymentGateway().name() : "TELEBIRR",
+                order.isGift(),
+                order.getGiftRecipientName(),
+                order.getGiftRecipientPhone(),
+                order.getGiftMessage(),
+                order.getPurchaserEmail(),
+                order.getPurchaserCountry(),
                 order.getStatus().name(),
                 order.getReservedUntilUtc().toString(),
                 itemDtos,
@@ -185,7 +231,7 @@ public class OrderService {
 
     public List<OrderDtos.OrderDetailsResponse> getOrdersByCustomerPhone(String rawPhone) {
         String normalizedPhone = PhoneNormalizer.normalize(rawPhone);
-        List<Order> orders = orderRepository.findByCustomerPhoneOrderByCreatedAtDesc(normalizedPhone);
+        List<Order> orders = orderRepository.findByCustomerPhoneOrGiftRecipientPhoneOrderByCreatedAtDesc(normalizedPhone, normalizedPhone);
 
         return orders.stream().map(order -> {
             List<OrderItem> items = orderItemRepository.findByOrderId(order.getId());
@@ -210,12 +256,25 @@ public class OrderService {
                     order.getCustomerPhone(),
                     order.getTotalAmount(),
                     order.getCurrency(),
+                    order.getForeignAmount(),
+                    order.getExchangeRate(),
+                    order.getPaymentGateway() != null ? order.getPaymentGateway().name() : "TELEBIRR",
+                    order.isGift(),
+                    order.getGiftRecipientName(),
+                    order.getGiftRecipientPhone(),
+                    order.getGiftMessage(),
+                    order.getPurchaserEmail(),
+                    order.getPurchaserCountry(),
                     order.getStatus().name(),
                     order.getReservedUntilUtc().toString(),
                     itemDtos,
                     ticketDtos
             );
         }).collect(Collectors.toList());
+    }
+
+    public Order completeOrder(String orderNumber, PaymentGateway gateway, String gatewayReference) {
+        return completePaymentSuccess(orderNumber, gateway, gatewayReference, null);
     }
 
     /**

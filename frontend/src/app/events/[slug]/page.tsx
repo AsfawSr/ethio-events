@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { EventDetail, TicketType, SeatItem } from '@/lib/types';
 import { api } from '@/lib/api';
+import { useCurrency } from '@/lib/currency';
 import ReservationModal from '@/components/ReservationModal';
 import VenueSeatingChart from '@/components/VenueSeatingChart';
 
@@ -26,6 +27,7 @@ export default function EventDetailPage() {
   const params = useParams();
   const router = useRouter();
   const slug = params?.slug as string;
+  const { currency, formatPrice } = useCurrency();
 
   const [event, setEvent] = useState<EventDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -337,8 +339,7 @@ export default function EventDetailPage() {
                         </div>
                         <div className="text-right shrink-0">
                           <p className="text-lg font-black text-amber-400">
-                            {tier.price.toLocaleString()}{' '}
-                            <span className="text-xs text-slate-400 font-normal">ETB</span>
+                            {formatPrice(tier.price)}
                           </p>
                           <p className="text-[11px] text-slate-400">
                             {tier.availableCapacity} seats left

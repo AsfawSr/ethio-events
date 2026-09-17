@@ -35,8 +35,39 @@ public class Order {
     @Column(name = "total_amount", nullable = false, precision = 12, scale = 2)
     private BigDecimal totalAmount;
 
-    @Column(name = "currency", nullable = false, length = 3)
+    @Column(name = "currency", nullable = false, length = 10)
     private String currency = "ETB";
+
+    @Column(name = "exchange_rate", precision = 10, scale = 4)
+    private BigDecimal exchangeRate = BigDecimal.ONE;
+
+    @Column(name = "foreign_amount", precision = 12, scale = 2)
+    private BigDecimal foreignAmount;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "payment_gateway", length = 30)
+    private PaymentGateway paymentGateway = PaymentGateway.TELEBIRR;
+
+    @Column(name = "is_gift")
+    private Boolean isGift = false;
+
+    @Column(name = "gift_recipient_name", length = 100)
+    private String giftRecipientName;
+
+    @Column(name = "gift_recipient_phone", length = 20)
+    private String giftRecipientPhone;
+
+    @Column(name = "gift_message", columnDefinition = "TEXT")
+    private String giftMessage;
+
+    @Column(name = "purchaser_email", length = 150)
+    private String purchaserEmail;
+
+    @Column(name = "purchaser_country", length = 50)
+    private String purchaserCountry;
+
+    @Column(name = "stripe_payment_intent_id", length = 100)
+    private String stripePaymentIntentId;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 20)
@@ -89,6 +120,27 @@ public class Order {
     public void setAffiliateCode(String affiliateCode) { this.affiliateCode = affiliateCode; }
     public List<OrderItem> getItems() { return items; }
     public void setItems(List<OrderItem> items) { this.items = items; }
+    public BigDecimal getExchangeRate() { return exchangeRate; }
+    public void setExchangeRate(BigDecimal exchangeRate) { this.exchangeRate = exchangeRate; }
+    public BigDecimal getForeignAmount() { return foreignAmount; }
+    public void setForeignAmount(BigDecimal foreignAmount) { this.foreignAmount = foreignAmount; }
+    public PaymentGateway getPaymentGateway() { return paymentGateway; }
+    public void setPaymentGateway(PaymentGateway paymentGateway) { this.paymentGateway = paymentGateway; }
+    public Boolean getIsGift() { return isGift; }
+    public boolean isGift() { return Boolean.TRUE.equals(isGift); }
+    public void setIsGift(Boolean isGift) { this.isGift = isGift; }
+    public String getGiftRecipientName() { return giftRecipientName; }
+    public void setGiftRecipientName(String giftRecipientName) { this.giftRecipientName = giftRecipientName; }
+    public String getGiftRecipientPhone() { return giftRecipientPhone; }
+    public void setGiftRecipientPhone(String giftRecipientPhone) { this.giftRecipientPhone = giftRecipientPhone; }
+    public String getGiftMessage() { return giftMessage; }
+    public void setGiftMessage(String giftMessage) { this.giftMessage = giftMessage; }
+    public String getPurchaserEmail() { return purchaserEmail; }
+    public void setPurchaserEmail(String purchaserEmail) { this.purchaserEmail = purchaserEmail; }
+    public String getPurchaserCountry() { return purchaserCountry; }
+    public void setPurchaserCountry(String purchaserCountry) { this.purchaserCountry = purchaserCountry; }
+    public String getStripePaymentIntentId() { return stripePaymentIntentId; }
+    public void setStripePaymentIntentId(String stripePaymentIntentId) { this.stripePaymentIntentId = stripePaymentIntentId; }
     public Instant getCreatedAt() { return createdAt; }
     public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }

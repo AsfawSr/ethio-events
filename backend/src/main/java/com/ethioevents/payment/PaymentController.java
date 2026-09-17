@@ -29,17 +29,23 @@ public class PaymentController {
     private final TelebirrService telebirrService;
     private final TelebirrWebhookVerifier telebirrWebhookVerifier;
     private final ChapaService chapaService;
+    private final com.ethioevents.payment.currency.CurrencyExchangeService currencyExchangeService;
+    private final com.ethioevents.payment.stripe.StripeDiasporaPaymentService stripeDiasporaPaymentService;
 
     public PaymentController(OrderRepository orderRepository,
                              OrderService orderService,
                              TelebirrService telebirrService,
                              TelebirrWebhookVerifier telebirrWebhookVerifier,
-                             ChapaService chapaService) {
+                             ChapaService chapaService,
+                             com.ethioevents.payment.currency.CurrencyExchangeService currencyExchangeService,
+                             com.ethioevents.payment.stripe.StripeDiasporaPaymentService stripeDiasporaPaymentService) {
         this.orderRepository = orderRepository;
         this.orderService = orderService;
         this.telebirrService = telebirrService;
         this.telebirrWebhookVerifier = telebirrWebhookVerifier;
         this.chapaService = chapaService;
+        this.currencyExchangeService = currencyExchangeService;
+        this.stripeDiasporaPaymentService = stripeDiasporaPaymentService;
     }
 
     public record PaymentInitiateRequest(String orderNumber) {}
@@ -94,6 +100,24 @@ public class PaymentController {
 
         ChapaService.ChapaCheckoutResponse response = chapaService.initiateCheckout(order);
         return ResponseEntity.ok(ApiResponse.ok(response));
+    }
+
+    @GetMapping("/exchange-rates")
+    public ResponseEntity<ApiResponse<com.ethioevents.payment.currency.CurrencyExchangeService.ExchangeRatesResponse>> getExchangeRates() {
+        return ResponseEntity.ok(ApiResponse.ok(currencyExchangeService.getExchangeRates()));
+    }
+
+    @PostMapping("/stripe/initiate")
+    public ResponseEntity<ApiResponse<com.ethioevents.payment.stripe.StripeDiasporaPaymentService.StripeCheckoutResponse>> initiateStripe(
+            @RequestBody PaymentInitiateRequest request) {
+        return ResponseEntity.ok(ApiResponse.ok(stripeDiasporaPaymentService.initiateStripeCheckout(request.orderNumber())));
+    }
+
+    @PostMapping("/stripe/simulate-success")
+    public ResponseEntity<ApiResponse<String>> simulateStripeSuccess(
+            @RequestBody PaymentInitiateRequest request) {
+        stripeDiasporaPaymentService.confirmStripePayment(request.orderNumber(), "pi_sim_" + System.currentTimeMillis());
+        return ResponseEntity.ok(ApiResponse.ok("Stripe diaspora payment confirmed. Digital tickets and Gifting SMS have been dispatched."));
     }
 
     @PostMapping("/simulate-success")

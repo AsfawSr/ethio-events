@@ -160,7 +160,22 @@ export const api = {
       body: JSON.stringify({ orderNumber }),
     }),
 
-  simulatePaymentSuccess: (orderNumber: string, gateway: 'TELEBIRR' | 'CHAPA' = 'TELEBIRR') =>
+  getExchangeRates: () =>
+    fetchApi<import('./types').ExchangeRatesResponse>('/payments/exchange-rates'),
+
+  initiateStripe: (orderNumber: string) =>
+    fetchApi<import('./types').StripeCheckoutResponse>('/payments/stripe/initiate', {
+      method: 'POST',
+      body: JSON.stringify({ orderNumber }),
+    }),
+
+  simulateStripeSuccess: (orderNumber: string) =>
+    fetchApi<string>('/payments/stripe/simulate-success', {
+      method: 'POST',
+      body: JSON.stringify({ orderNumber }),
+    }),
+
+  simulatePaymentSuccess: (orderNumber: string, gateway: 'TELEBIRR' | 'CHAPA' | 'STRIPE_DIASPORA' = 'TELEBIRR') =>
     fetchApi<string>('/payments/simulate-success', {
       method: 'POST',
       body: JSON.stringify({ orderNumber, gateway }),

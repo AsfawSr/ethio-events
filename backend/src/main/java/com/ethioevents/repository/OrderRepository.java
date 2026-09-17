@@ -17,6 +17,7 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
     Optional<Order> findByOrderNumber(String orderNumber);
     List<Order> findByUserIdOrderByCreatedAtDesc(UUID userId);
     List<Order> findByCustomerPhoneOrderByCreatedAtDesc(String customerPhone);
+    List<Order> findByCustomerPhoneOrGiftRecipientPhoneOrderByCreatedAtDesc(String customerPhone, String giftRecipientPhone);
 
     @Query("SELECT o FROM Order o WHERE o.status = :status AND o.reservedUntilUtc < :now")
     List<Order> findExpiredOrders(@Param("status") OrderStatus status, @Param("now") Instant now);

@@ -2,16 +2,19 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Ticket, QrCode, Sparkles, Phone, Compass, Building2, Languages } from 'lucide-react';
+import { Ticket, QrCode, Sparkles, Phone, Compass, Building2, Languages, Globe } from 'lucide-react';
 import MyTicketsModal from './MyTicketsModal';
 import { authStorage } from '@/lib/auth';
 import { OrganizerSession } from '@/lib/types';
 import { useI18n } from '@/lib/i18n';
+import { useCurrency } from '@/lib/currency';
 
 export default function Navbar() {
   const [showMyTicketsModal, setShowMyTicketsModal] = useState(false);
   const [organizerSession, setOrganizerSession] = useState<OrganizerSession | null>(null);
+  const [showCurrencyDropdown, setShowCurrencyDropdown] = useState(false);
   const { t, language, setLanguage } = useI18n();
+  const { currency, setCurrency, currencies, getCurrencyInfo } = useCurrency();
 
   useEffect(() => {
     setOrganizerSession(authStorage.getSession());
@@ -23,6 +26,8 @@ export default function Navbar() {
   const toggleLanguage = () => {
     setLanguage(language === 'en' ? 'am' : 'en');
   };
+
+  const currentCurrencyInfo = getCurrencyInfo(currency);
 
   return (
     <>
@@ -48,6 +53,49 @@ export default function Navbar() {
 
           {/* Navigation Items */}
           <nav className="flex items-center gap-2 sm:gap-2.5">
+            {/* Currency Switcher Dropdown */}
+            <div className="relative">
+              <button
+                onClick={() => setShowCurrencyDropdown(!showCurrencyDropdown)}
+                className="flex items-center gap-1.5 text-xs font-bold bg-slate-900/90 hover:bg-slate-800 text-slate-200 hover:text-white border border-slate-700/80 px-2.5 py-1.5 rounded-xl transition shadow-sm active:scale-95"
+                title="Select Currency / Diaspora Checkout (የገንዘብ ምንዛሬ ይምረጡ)"
+              >
+                <span>{currentCurrencyInfo.flag}</span>
+                <span>{currentCurrencyInfo.code}</span>
+              </button>
+
+              {showCurrencyDropdown && (
+                <div
+                  className="absolute right-0 mt-2 w-48 rounded-2xl border border-slate-700 bg-slate-900/95 backdrop-blur-2xl py-1.5 shadow-2xl z-50 animate-in fade-in slide-in-from-top-2"
+                  onMouseLeave={() => setShowCurrencyDropdown(false)}
+                >
+                  <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 border-b border-slate-800">
+                    🌍 Diaspora Currencies
+                  </div>
+                  {currencies.map((c) => (
+                    <button
+                      key={c.code}
+                      onClick={() => {
+                        setCurrency(c.code as any);
+                        setShowCurrencyDropdown(false);
+                      }}
+                      className={`w-full flex items-center justify-between px-3 py-2 text-xs font-medium transition text-left ${
+                        currency === c.code
+                          ? 'bg-amber-500/15 text-amber-300 font-bold'
+                          : 'text-slate-300 hover:bg-white/5 hover:text-white'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span>{c.flag}</span>
+                        <span>{c.code}</span>
+                      </div>
+                      <span className="text-[11px] text-slate-400">{c.name}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
             {/* Language Switcher Toggle */}
             <button
               onClick={toggleLanguage}

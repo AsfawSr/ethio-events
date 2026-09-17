@@ -56,6 +56,17 @@ public class DatabaseSchemaInitializer implements BeanPostProcessor {
 
             // 2. Ensure orders table columns exist
             stmt.execute("ALTER TABLE IF EXISTS orders ADD COLUMN IF NOT EXISTS affiliate_code VARCHAR(50)");
+            stmt.execute("ALTER TABLE IF EXISTS orders ADD COLUMN IF NOT EXISTS exchange_rate NUMERIC(10, 4) DEFAULT 1.0000");
+            stmt.execute("ALTER TABLE IF EXISTS orders ADD COLUMN IF NOT EXISTS foreign_amount NUMERIC(12, 2)");
+            stmt.execute("ALTER TABLE IF EXISTS orders ADD COLUMN IF NOT EXISTS payment_gateway VARCHAR(30) DEFAULT 'TELEBIRR'");
+            stmt.execute("ALTER TABLE IF EXISTS orders ADD COLUMN IF NOT EXISTS is_gift BOOLEAN DEFAULT false");
+            stmt.execute("ALTER TABLE IF EXISTS orders ADD COLUMN IF NOT EXISTS gift_recipient_name VARCHAR(100)");
+            stmt.execute("ALTER TABLE IF EXISTS orders ADD COLUMN IF NOT EXISTS gift_recipient_phone VARCHAR(20)");
+            stmt.execute("ALTER TABLE IF EXISTS orders ADD COLUMN IF NOT EXISTS gift_message TEXT");
+            stmt.execute("ALTER TABLE IF EXISTS orders ADD COLUMN IF NOT EXISTS purchaser_email VARCHAR(150)");
+            stmt.execute("ALTER TABLE IF EXISTS orders ADD COLUMN IF NOT EXISTS purchaser_country VARCHAR(50)");
+            stmt.execute("ALTER TABLE IF EXISTS orders ADD COLUMN IF NOT EXISTS stripe_payment_intent_id VARCHAR(100)");
+            stmt.execute("CREATE INDEX IF NOT EXISTS idx_orders_gift_recipient_phone ON orders(gift_recipient_phone)");
 
             // 3. Ensure gate_crew_pins table exists
             stmt.execute("""
