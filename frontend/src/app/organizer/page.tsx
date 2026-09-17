@@ -38,11 +38,30 @@ import {
   BarChart3,
   PieChart,
   FileText,
-  RefreshCw
+  RefreshCw,
+  Megaphone,
+  Send,
+  Bell,
+  MessageSquare,
+  Check,
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { authStorage } from '@/lib/auth';
-import { OrganizerProfile, OrganizerSession, EventSummary, SettlementSummaryItem, CheckInLiveEvent, GateLiveStats, PromoCodeItem, GateCrewPinItem, AffiliateItem, EventAnalyticsSummary } from '@/lib/types';
+import {
+  OrganizerProfile,
+  OrganizerSession,
+  EventSummary,
+  SettlementSummaryItem,
+  CheckInLiveEvent,
+  GateLiveStats,
+  PromoCodeItem,
+  GateCrewPinItem,
+  AffiliateItem,
+  EventAnalyticsSummary,
+  BroadcastCampaignItem,
+  AutomatedReminderConfig,
+  AudienceEstimateResponse,
+} from '@/lib/types';
 
 const ETHIOPIAN_BANKS = [
   'Commercial Bank of Ethiopia (CBE)',
@@ -63,7 +82,7 @@ export default function OrganizerPortalPage() {
   const [settlements, setSettlements] = useState<SettlementSummaryItem[]>([]);
   const [promos, setPromos] = useState<PromoCodeItem[]>([]);
   const [affiliates, setAffiliates] = useState<AffiliateItem[]>([]);
-  const [dashboardTab, setDashboardTab] = useState<'events' | 'settlements' | 'livegate' | 'promos' | 'affiliates' | 'reports'>('events');
+  const [dashboardTab, setDashboardTab] = useState<'events' | 'settlements' | 'livegate' | 'promos' | 'affiliates' | 'reports' | 'broadcasts'>('events');
   const [loading, setLoading] = useState(true);
 
   // Reports & Financial Analytics State
@@ -71,6 +90,73 @@ export default function OrganizerPortalPage() {
   const [analyticsData, setAnalyticsData] = useState<EventAnalyticsSummary | null>(null);
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
   const [analyticsError, setAnalyticsError] = useState<string | null>(null);
+
+  // SMS Broadcasts & Automated Reminders State
+  const [broadcasts, setBroadcasts] = useState<BroadcastCampaignItem[]>([]);
+  const [selectedBroadcastEventId, setSelectedBroadcastEventId] = useState<string>('');
+  const [broadcastsLoading, setBroadcastsLoading] = useState(false);
+  const [showBroadcastModal, setShowBroadcastModal] = useState(false);
+  const [broadcastForm, setBroadcastForm] = useState({
+    title: '',
+    targetFilter: 'ALL_ATTENDEES',
+    targetTicketTypeId: '',
+    messageContent: '',
+    language: 'en',
+  });
+  const [broadcastCreating, setBroadcastCreating] = useState(false);
+  const [broadcastError, setBroadcastError] = useState<string | null>(null);
+  const [broadcastSuccess, setBroadcastSuccess] = useState<string | null>(null);
+  const [audienceEstimate, setAudienceEstimate] = useState<AudienceEstimateResponse | null>(null);
+  const [audienceLoading, setAudienceLoading] = useState(false);
+  const [testPhone, setTestPhone] = useState('');
+  const [testSending, setTestSending] = useState(false);
+  const [testSentSuccess, setTestSentSuccess] = useState<string | null>(null);
+  const [reminderConfig, setReminderConfig] = useState<AutomatedReminderConfig | null>(null);
+  const [reminderUpdating, setReminderUpdating] = useState(false);
+
+  const loadBroadcastData = async (eventId: string) => {
+    if (!eventId) return;
+    setBroadcastsLoading(true);
+    try {
+      const [cList, rConfig, aud] = await Promise.all([
+        api.getEventBroadcasts(eventId),
+        api.getEventReminders(eventId),
+        api.getAudienceEstimate(eventId, broadcastForm.targetFilter, broadcastForm.targetTicketTypeId || undefined),
+      ]);
+      setBroadcasts(cList);
+      setReminderConfig(rConfig);
+      setAudienceEstimate(aud);
+    } catch (err: any) {
+      console.warn('Failed to load broadcasts:', err);
+    } finally {
+      setBroadcastsLoading(false);
+    }
+  };
+
+  const fetchAudienceEstimate = async (eventId: string, filter: string, tierId?: string) => {
+    if (!eventId) return;
+    setAudienceLoading(true);
+    try {
+      const aud = await api.getAudienceEstimate(eventId, filter, tierId || undefined);
+      setAudienceEstimate(aud);
+    } catch (err) {
+      console.warn('Failed to fetch audience estimate:', err);
+    } finally {
+      setAudienceLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (selectedBroadcastEventId) {
+      loadBroadcastData(selectedBroadcastEventId);
+    }
+  }, [selectedBroadcastEventId]);
+
+  useEffect(() => {
+    if (myEvents.length > 0 && !selectedBroadcastEventId) {
+      setSelectedBroadcastEventId(myEvents[0].id);
+    }
+  }, [myEvents]);
 
   const loadEventAnalytics = async (eventId: string) => {
     if (!eventId) return;
@@ -543,6 +629,86 @@ export default function OrganizerPortalPage() {
     }
   };
 
+  // Handle Create SMS Broadcast Blast
+  const handleCreateBroadcast = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBroadcastError(null);
+    setBroadcastSuccess(null);
+    if (!selectedBroadcastEventId) {
+      setBroadcastError('Please select an event for this broadcast');
+      return;
+    }
+    if (!broadcastForm.title.trim() || !broadcastForm.messageContent.trim()) {
+      setBroadcastError('Please provide a campaign title and SMS message');
+      return;
+    }
+    try {
+      setBroadcastCreating(true);
+      const created = await api.createBroadcastCampaign({
+        eventId: selectedBroadcastEventId,
+        title: broadcastForm.title.trim(),
+        targetFilter: broadcastForm.targetFilter,
+        targetTicketTypeId: broadcastForm.targetTicketTypeId || undefined,
+        messageContent: broadcastForm.messageContent.trim(),
+        language: broadcastForm.language || 'en',
+      });
+      setBroadcasts((prev) => [created, ...prev]);
+      setBroadcastSuccess(`Broadcast blast "${created.title}" successfully dispatched to ${created.recipientCount} attendees!`);
+      setShowBroadcastModal(false);
+      setBroadcastForm({
+        title: '',
+        targetFilter: 'ALL_ATTENDEES',
+        targetTicketTypeId: '',
+        messageContent: '',
+        language: 'en',
+      });
+    } catch (err: any) {
+      setBroadcastError(err.message || 'Failed to dispatch broadcast campaign');
+    } finally {
+      setBroadcastCreating(false);
+    }
+  };
+
+  // Handle Send Test SMS
+  const handleSendTestBroadcast = async () => {
+    if (!testPhone.trim() || !broadcastForm.messageContent.trim()) {
+      setBroadcastError('Please enter a test phone number and message content');
+      return;
+    }
+    setTestSending(true);
+    setTestSentSuccess(null);
+    setBroadcastError(null);
+    try {
+      await api.sendTestBroadcast({
+        eventId: selectedBroadcastEventId,
+        testPhoneNumber: testPhone.trim(),
+        messageContent: broadcastForm.messageContent.trim(),
+      });
+      setTestSentSuccess(`✓ Test preview SMS sent to ${testPhone.trim()}!`);
+    } catch (err: any) {
+      setBroadcastError(err.message || 'Failed to send test preview SMS');
+    } finally {
+      setTestSending(false);
+    }
+  };
+
+  // Handle Toggle Automated Reminders
+  const handleToggleReminder = async (type: '24h' | '2h', currentEnabled: boolean) => {
+    if (!selectedBroadcastEventId) return;
+    setReminderUpdating(true);
+    try {
+      const updated = await api.updateEventReminders(selectedBroadcastEventId, {
+        ...(type === '24h' ? { tMinus24HoursEnabled: !currentEnabled } : {}),
+        ...(type === '2h' ? { tMinus2HoursEnabled: !currentEnabled } : {}),
+      });
+      setReminderConfig(updated);
+    } catch (err: any) {
+      console.warn('Failed to update automated reminder:', err);
+    } finally {
+      setReminderUpdating(false);
+    }
+  };
+
   // If loading session
   if (loading && session) {
     return (
@@ -740,6 +906,18 @@ export default function OrganizerPortalPage() {
             >
               <FileSpreadsheet className="h-4 w-4" />
               Reports & Financials
+            </button>
+
+            <button
+              onClick={() => setDashboardTab('broadcasts')}
+              className={`px-4 py-2 rounded-xl text-sm font-bold transition flex items-center gap-2 ${
+                dashboardTab === 'broadcasts'
+                  ? 'bg-amber-500 text-black shadow-glowGold'
+                  : 'text-slate-400 hover:text-white bg-slate-900/60 hover:bg-slate-800'
+              }`}
+            >
+              <Megaphone className="h-4 w-4" />
+              SMS Broadcasts ({broadcasts.length})
             </button>
           </div>
 
@@ -1754,6 +1932,262 @@ export default function OrganizerPortalPage() {
               ) : null}
             </div>
           )}
+
+          {/* TAB 7: Organizer SMS Broadcasts & Automated Pre-Event Reminders */}
+          {dashboardTab === 'broadcasts' && (
+            <div className="space-y-6 animate-fadeIn">
+              {/* Event Selector & Actions Bar */}
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-5 rounded-2xl bg-slate-900/80 border border-white/10">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
+                    <Megaphone className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-white">Event SMS Broadcast Center</h3>
+                    <p className="text-xs text-slate-400">Dispatch bulk notices &amp; manage automated AfroMessage reminders</p>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-3">
+                  <select
+                    value={selectedBroadcastEventId}
+                    onChange={(e) => setSelectedBroadcastEventId(e.target.value)}
+                    className="bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2 text-white text-xs font-semibold focus:outline-none focus:border-amber-400"
+                  >
+                    {myEvents.map((evt) => (
+                      <option key={evt.id} value={evt.id}>
+                        {evt.title}
+                      </option>
+                    ))}
+                  </select>
+
+                  <button
+                    onClick={() => {
+                      setShowBroadcastModal(true);
+                      setBroadcastError(null);
+                      setTestSentSuccess(null);
+                      if (selectedBroadcastEventId) {
+                        fetchAudienceEstimate(selectedBroadcastEventId, broadcastForm.targetFilter, broadcastForm.targetTicketTypeId || undefined);
+                      }
+                    }}
+                    className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-amber-400 via-amber-300 to-yellow-400 px-4 py-2 text-xs font-bold text-black shadow-glowGold hover:from-amber-300 hover:to-yellow-300 transition active:scale-95"
+                  >
+                    <Send className="h-3.5 w-3.5 text-black" />
+                    <span>Create SMS Blast</span>
+                  </button>
+                </div>
+              </div>
+
+              {broadcastSuccess && (
+                <div className="p-4 rounded-xl bg-emerald-950/50 border border-emerald-500/40 text-emerald-300 text-xs flex items-center gap-2 animate-fadeIn">
+                  <Check className="h-4 w-4 text-emerald-400" />
+                  <span>{broadcastSuccess}</span>
+                </div>
+              )}
+
+              {/* KPI Summary Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-5">
+                  <div className="flex items-center justify-between text-slate-400 mb-2">
+                    <span className="text-xs font-bold uppercase tracking-wider">Campaigns Sent</span>
+                    <Megaphone className="h-5 w-5 text-amber-400" />
+                  </div>
+                  <div className="text-2xl font-black text-white">{broadcasts.length}</div>
+                  <p className="mt-1 text-[11px] text-slate-400">Total SMS blasts launched</p>
+                </div>
+
+                <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-5">
+                  <div className="flex items-center justify-between text-slate-400 mb-2">
+                    <span className="text-xs font-bold uppercase tracking-wider">Total Recipients</span>
+                    <Users className="h-5 w-5 text-indigo-400" />
+                  </div>
+                  <div className="text-2xl font-black text-indigo-400">
+                    {broadcasts.reduce((acc, c) => acc + c.recipientCount, 0).toLocaleString()}
+                  </div>
+                  <p className="mt-1 text-[11px] text-slate-400">Ethiopian mobile phones reached</p>
+                </div>
+
+                <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-5">
+                  <div className="flex items-center justify-between text-slate-400 mb-2">
+                    <span className="text-xs font-bold uppercase tracking-wider">Delivery Rate</span>
+                    <ShieldCheck className="h-5 w-5 text-emerald-400" />
+                  </div>
+                  <div className="text-2xl font-black text-emerald-400">
+                    {broadcasts.length > 0
+                      ? Math.round(
+                          (broadcasts.reduce((acc, c) => acc + c.deliveredCount, 0) /
+                            Math.max(1, broadcasts.reduce((acc, c) => acc + c.recipientCount, 0))) *
+                            100
+                        )
+                      : 100}
+                    %
+                  </div>
+                  <p className="mt-1 text-[11px] text-slate-400">AfroMessage network delivery</p>
+                </div>
+
+                <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-5">
+                  <div className="flex items-center justify-between text-slate-400 mb-2">
+                    <span className="text-xs font-bold uppercase tracking-wider">Audience Reach</span>
+                    <Radio className="h-5 w-5 text-sky-400" />
+                  </div>
+                  <div className="text-2xl font-black text-sky-400">
+                    {audienceEstimate ? audienceEstimate.estimatedRecipientsCount : 0}
+                  </div>
+                  <p className="mt-1 text-[11px] text-slate-400">Current paid ticket holders</p>
+                </div>
+              </div>
+
+              {/* Automated Pre-Event Reminders Control Box */}
+              <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-6 space-y-4">
+                <div className="flex items-center justify-between border-b border-white/10 pb-3">
+                  <div className="flex items-center gap-2">
+                    <Bell className="h-4 w-4 text-amber-400" />
+                    <h4 className="text-sm font-bold text-white">Automated Pre-Event SMS Reminders</h4>
+                  </div>
+                  <span className="text-xs text-slate-400">Scheduled by EthioEvents Cron</span>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                  {/* T-Minus 24h Card */}
+                  <div className="p-4 rounded-xl border border-white/10 bg-slate-800/40 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Clock className="h-4 w-4 text-amber-400" />
+                        <span className="text-xs font-bold text-white">24-Hour Pre-Event Reminder</span>
+                      </div>
+                      <button
+                        onClick={() => handleToggleReminder('24h', reminderConfig?.tMinus24HoursEnabled ?? true)}
+                        disabled={reminderUpdating}
+                        className={`text-[11px] font-bold px-3 py-1 rounded-full transition ${
+                          reminderConfig?.tMinus24HoursEnabled
+                            ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                            : 'bg-slate-700 text-slate-400'
+                        }`}
+                      >
+                        {reminderConfig?.tMinus24HoursEnabled ? 'Enabled' : 'Disabled'}
+                      </button>
+                    </div>
+
+                    <p className="text-[11px] text-slate-300">
+                      Dispatches: <span className="italic text-slate-400">"📅 EthioEvents Reminder: Starts TOMORROW at Millennium Hall! Have your QR pass ready: [Link]"</span>
+                    </p>
+
+                    <div className="text-[10px] text-slate-400 flex items-center justify-between border-t border-white/5 pt-2">
+                      <span>Status: {reminderConfig?.tMinus24HoursSent ? `✓ Sent to ${reminderConfig.tMinus24HoursTotalSent} attendees` : 'Pending (Auto-triggers 24h prior)'}</span>
+                    </div>
+                  </div>
+
+                  {/* T-Minus 2h Card */}
+                  <div className="p-4 rounded-xl border border-white/10 bg-slate-800/40 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Radio className="h-4 w-4 text-sky-400" />
+                        <span className="text-xs font-bold text-white">2-Hour Gate Arrival Alert</span>
+                      </div>
+                      <button
+                        onClick={() => handleToggleReminder('2h', reminderConfig?.tMinus2HoursEnabled ?? true)}
+                        disabled={reminderUpdating}
+                        className={`text-[11px] font-bold px-3 py-1 rounded-full transition ${
+                          reminderConfig?.tMinus2HoursEnabled
+                            ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                            : 'bg-slate-700 text-slate-400'
+                        }`}
+                      >
+                        {reminderConfig?.tMinus2HoursEnabled ? 'Enabled' : 'Disabled'}
+                      </button>
+                    </div>
+
+                    <p className="text-[11px] text-slate-300">
+                      Dispatches: <span className="italic text-slate-400">"⚡ EthioEvents Alert: Gates open in 2 HOURS! Open your QR pass for instant check-in: [Link]"</span>
+                    </p>
+
+                    <div className="text-[10px] text-slate-400 flex items-center justify-between border-t border-white/5 pt-2">
+                      <span>Status: {reminderConfig?.tMinus2HoursSent ? `✓ Sent to ${reminderConfig.tMinus2HoursTotalSent} attendees` : 'Pending (Auto-triggers 2h prior)'}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Broadcast Campaigns Table */}
+              <div className="rounded-2xl border border-white/10 bg-slate-900/60 overflow-hidden">
+                <div className="p-4 border-b border-white/10 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <MessageSquare className="h-4 w-4 text-amber-400" />
+                    <h4 className="text-sm font-bold text-white">Broadcast Campaign History</h4>
+                  </div>
+                  <span className="text-xs text-slate-400">{broadcasts.length} Campaigns</span>
+                </div>
+
+                {broadcastsLoading ? (
+                  <div className="p-8 text-center text-slate-400 text-xs">
+                    <Loader2 className="h-6 w-6 animate-spin mx-auto text-amber-400 mb-2" />
+                    <span>Loading broadcast logs...</span>
+                  </div>
+                ) : broadcasts.length === 0 ? (
+                  <div className="p-12 text-center text-slate-400 space-y-3">
+                    <Megaphone className="h-10 w-10 text-slate-600 mx-auto" />
+                    <p className="text-sm font-semibold text-white">No Broadcast Campaigns Sent Yet</p>
+                    <p className="text-xs text-slate-400 max-w-sm mx-auto">
+                      Send your first SMS announcement to ticket holders with gate details, parking, or performer schedules.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-slate-950/60 text-slate-400 uppercase text-[10px] font-bold tracking-wider">
+                        <tr>
+                          <th className="px-4 py-3">Campaign Title</th>
+                          <th className="px-4 py-3">Audience Filter</th>
+                          <th className="px-4 py-3">Message Content</th>
+                          <th className="px-4 py-3 text-center">Recipients</th>
+                          <th className="px-4 py-3 text-center">Delivered</th>
+                          <th className="px-4 py-3 text-center">Status</th>
+                          <th className="px-4 py-3 text-right">Sent Date</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-white/5">
+                        {broadcasts.map((c) => (
+                          <tr key={c.id} className="hover:bg-white/[0.02]">
+                            <td className="px-4 py-3 font-bold text-white">{c.title}</td>
+                            <td className="px-4 py-3">
+                              <span className="text-[10px] font-mono font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30 px-2 py-0.5 rounded">
+                                {c.targetTierName || c.targetFilter}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-slate-300 max-w-xs truncate" title={c.messageContent}>
+                              {c.messageContent}
+                            </td>
+                            <td className="px-4 py-3 text-center font-mono text-white font-bold">
+                              {c.recipientCount}
+                            </td>
+                            <td className="px-4 py-3 text-center font-mono text-emerald-400 font-bold">
+                              {c.deliveredCount}
+                            </td>
+                            <td className="px-4 py-3 text-center">
+                              <span
+                                className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                                  c.status === 'COMPLETED'
+                                    ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                                    : c.status === 'PROCESSING'
+                                    ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                                    : 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
+                                }`}
+                              >
+                                {c.status}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-right font-mono text-slate-400">
+                              {c.sentAt ? new Date(c.sentAt).toLocaleDateString() : 'Just now'}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Modal: Create Promo Code */}
@@ -2170,6 +2604,287 @@ export default function OrganizerPortalPage() {
                       <>
                         <Users className="h-4 w-4 text-black" />
                         Save & Generate Tracking Link
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Modal: Create AfroMessage SMS Broadcast Blast */}
+        {showBroadcastModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fadeIn overflow-y-auto">
+            <div className="relative w-full max-w-2xl rounded-2xl border border-white/10 bg-slate-900 p-6 shadow-2xl space-y-5 my-8">
+              <div className="flex items-center justify-between border-b border-white/10 pb-4">
+                <div className="flex items-center gap-2.5">
+                  <div className="h-10 w-10 rounded-xl bg-purple-500/10 border border-purple-500/30 flex items-center justify-center text-purple-400">
+                    <Megaphone className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-white flex items-center gap-2">
+                      AfroMessage SMS Broadcast Blast
+                      <span className="text-[10px] font-mono uppercase bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded-full border border-purple-500/30">
+                        Live Gateway
+                      </span>
+                    </h3>
+                    <p className="text-xs text-slate-400">Send instant personalized SMS notices to paid event attendees</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowBroadcastModal(false)}
+                  className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              {broadcastError && (
+                <div className="flex items-center gap-2 rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-rose-300 text-xs">
+                  <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                  <span>{broadcastError}</span>
+                </div>
+              )}
+
+              {testSentSuccess && (
+                <div className="flex items-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-emerald-300 text-xs">
+                  <CheckCircle2 className="h-4 w-4 flex-shrink-0 text-emerald-400" />
+                  <span>{testSentSuccess}</span>
+                </div>
+              )}
+
+              <form onSubmit={handleCreateBroadcast} className="space-y-4 text-xs">
+                {/* Event & Title */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-slate-300 font-bold mb-1.5">
+                      Target Event *
+                    </label>
+                    <select
+                      value={selectedBroadcastEventId}
+                      onChange={(e) => {
+                        setSelectedBroadcastEventId(e.target.value);
+                        fetchAudienceEstimate(e.target.value, broadcastForm.targetFilter, broadcastForm.targetTicketTypeId || undefined);
+                      }}
+                      className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-white font-semibold focus:outline-none focus:border-amber-400"
+                    >
+                      {myEvents.map((evt) => (
+                        <option key={evt.id} value={evt.id}>
+                          {evt.title} ({evt.venueName})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-slate-300 font-bold mb-1.5">
+                      Campaign Title *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. Gate Arrival & Parking Info"
+                      value={broadcastForm.title}
+                      onChange={(e) => setBroadcastForm({ ...broadcastForm, title: e.target.value })}
+                      className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-white font-semibold focus:outline-none focus:border-amber-400 placeholder:text-slate-500"
+                    />
+                  </div>
+                </div>
+
+                {/* Audience Filter & Live Estimator */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-slate-300 font-bold mb-1.5">
+                      Audience Target Filter
+                    </label>
+                    <select
+                      value={broadcastForm.targetFilter}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setBroadcastForm({ ...broadcastForm, targetFilter: val });
+                        fetchAudienceEstimate(selectedBroadcastEventId, val, broadcastForm.targetTicketTypeId || undefined);
+                      }}
+                      className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-white font-semibold focus:outline-none focus:border-amber-400"
+                    >
+                      <option value="ALL_ATTENDEES">All Paid Ticket Holders (Entire Audience)</option>
+                      <option value="VIP_ONLY">VIP & VVIP Passes Only</option>
+                      <option value="REGULAR_ONLY">Regular / General Admission Passes Only</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-slate-300 font-bold mb-1.5">
+                      Target Audience Reach
+                    </label>
+                    <div className="flex items-center justify-between h-[42px] px-4 rounded-xl border border-indigo-500/30 bg-indigo-500/10 text-indigo-300">
+                      <div className="flex items-center gap-2">
+                        <Users className="h-4 w-4" />
+                        <span className="font-bold">
+                          {audienceLoading ? 'Estimating...' : `${audienceEstimate?.estimatedRecipientsCount ?? 0} Unique Recipients`}
+                        </span>
+                      </div>
+                      <span className="text-[10px] text-indigo-400/80 font-mono">
+                        ({audienceEstimate?.totalTicketsCount ?? 0} Tickets)
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Template Preset Chips */}
+                <div>
+                  <label className="block text-slate-300 font-bold mb-1.5">
+                    Quick Insert Templates
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setBroadcastForm({
+                          ...broadcastForm,
+                          messageContent:
+                            '📅 EthioEvents: {name}, gates for {event} at {venue} open today at {time}. Please arrive early. Pass: {pass_link}',
+                        })
+                      }
+                      className="text-[11px] px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition"
+                    >
+                      📅 Gate Timing & Early Arrival
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setBroadcastForm({
+                          ...broadcastForm,
+                          messageContent:
+                            '🚗 EthioEvents VIP Alert: {name}, dedicated parking for {event} is located at North Gate of {venue}. Show pass on entry: {pass_link}',
+                        })
+                      }
+                      className="text-[11px] px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition"
+                    >
+                      🚗 VIP Parking & Gate Access
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setBroadcastForm({
+                          ...broadcastForm,
+                          messageContent:
+                            '🇪🇹 EthioEvents: ሰላም {name}፣ ለ{event} ዝግጅት በ{venue} በሰዓቱ {time} ይገኙ። ትኬትዎን ይመልከቱ: {pass_link}',
+                        })
+                      }
+                      className="text-[11px] px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-amber-300/90 border border-amber-500/20 transition"
+                    >
+                      🇪🇹 Amharic Event Notice
+                    </button>
+                  </div>
+                </div>
+
+                {/* Message Content & Dynamic Tags */}
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-slate-300 font-bold">
+                      SMS Message Content *
+                    </label>
+                    <div className="flex items-center gap-1">
+                      <span className="text-[10px] text-slate-400">Insert tag:</span>
+                      {['{name}', '{event}', '{venue}', '{time}', '{pass_link}'].map((tag) => (
+                        <button
+                          key={tag}
+                          type="button"
+                          onClick={() =>
+                            setBroadcastForm((prev) => ({
+                              ...prev,
+                              messageContent: `${prev.messageContent} ${tag} `,
+                            }))
+                          }
+                          className="font-mono text-[10px] font-bold bg-amber-500/15 hover:bg-amber-500/25 text-amber-400 border border-amber-500/30 px-1.5 py-0.5 rounded transition"
+                        >
+                          {tag}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <textarea
+                    rows={4}
+                    required
+                    value={broadcastForm.messageContent}
+                    onChange={(e) => setBroadcastForm({ ...broadcastForm, messageContent: e.target.value })}
+                    placeholder="Type your SMS broadcast announcement here... Use {name} for attendee name, {pass_link} for instant QR access."
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3.5 text-white font-sans text-xs focus:outline-none focus:border-amber-400 placeholder:text-slate-500"
+                  />
+
+                  <div className="flex items-center justify-between text-[11px] text-slate-400 mt-1">
+                    <span>
+                      Length: <strong className="text-white font-mono">{broadcastForm.messageContent.length}</strong> chars •{' '}
+                      <strong className="text-amber-400 font-mono">
+                        {Math.ceil(broadcastForm.messageContent.length / 160) || 1}
+                      </strong>{' '}
+                      SMS segments
+                    </span>
+                    <span className="text-slate-500">AfroMessage Ethiopian Gateway</span>
+                  </div>
+                </div>
+
+                {/* Send Test Preview SMS Section */}
+                <div className="p-3.5 rounded-xl border border-white/10 bg-slate-800/50 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                      <Send className="h-3.5 w-3.5 text-amber-400" />
+                      Send Instant Test Preview
+                    </span>
+                    <span className="text-[10px] text-slate-400">Verifies SMS delivery before launching blast</span>
+                  </div>
+                  <div className="flex gap-2">
+                    <input
+                      type="tel"
+                      placeholder="0911223344"
+                      value={testPhone}
+                      onChange={(e) => setTestPhone(e.target.value)}
+                      className="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono text-xs focus:outline-none focus:border-amber-400"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleSendTestBroadcast}
+                      disabled={testSending || !testPhone.trim() || !broadcastForm.messageContent.trim()}
+                      className="px-4 py-2 rounded-xl bg-slate-700 hover:bg-slate-600 text-white font-bold transition disabled:opacity-50 text-xs flex items-center gap-1.5"
+                    >
+                      {testSending ? (
+                        <>
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          Sending...
+                        </>
+                      ) : (
+                        'Send Test SMS'
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Footer Submit Buttons */}
+                <div className="pt-3 border-t border-white/10 flex items-center justify-end gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => setShowBroadcastModal(false)}
+                    className="px-4 py-2.5 rounded-xl text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 font-bold transition"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={broadcastCreating || (audienceEstimate?.estimatedRecipientsCount === 0)}
+                    className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-purple-500 via-purple-400 to-indigo-500 px-6 py-2.5 text-xs font-bold text-white shadow-lg shadow-purple-500/25 hover:from-purple-400 hover:to-indigo-400 transition disabled:opacity-50"
+                  >
+                    {broadcastCreating ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin text-white" />
+                        Broadcasting via AfroMessage...
+                      </>
+                    ) : (
+                      <>
+                        <Megaphone className="h-4 w-4 text-white" />
+                        Launch AfroMessage Broadcast Blast
                       </>
                     )}
                   </button>

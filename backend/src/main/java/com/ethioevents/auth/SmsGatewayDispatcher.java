@@ -70,6 +70,11 @@ public class SmsGatewayDispatcher implements SmsGatewayService {
         dispatch(phoneNumber, "EVENT_UPDATE", fullMessage);
     }
 
+    public boolean sendBroadcastSms(String phoneNumber, String message, String eventTitle) {
+        SmsLog logEntry = dispatch(phoneNumber, "BROADCAST", message);
+        return logEntry != null && "SENT".equalsIgnoreCase(logEntry.getStatus());
+    }
+
     public SmsLog dispatch(String phoneNumber, String messageType, String content) {
         String provider = this.activeProvider;
         boolean success = false;
