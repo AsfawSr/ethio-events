@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Ticket, QrCode, Sparkles, Phone, Compass, Building2, Languages, Globe } from 'lucide-react';
+import { Ticket, QrCode, Sparkles, Phone, Compass, Building2, Languages, Globe, Map as MapIcon } from 'lucide-react';
 import MyTicketsModal from './MyTicketsModal';
 import { authStorage } from '@/lib/auth';
 import { OrganizerSession } from '@/lib/types';
@@ -112,6 +112,15 @@ export default function Navbar() {
             >
               <Compass className="h-4 w-4 text-amber-400" />
               {t.explore}
+            </Link>
+
+            {/* Interactive Addis Map Link */}
+            <Link
+              href="/map"
+              className="hidden md:flex items-center gap-1.5 text-sm font-medium text-slate-300 hover:text-white px-3 py-2 rounded-lg hover:bg-white/5 transition"
+            >
+              <MapIcon className="h-4 w-4 text-sky-400" />
+              <span>{language === 'am' ? 'ካርታ' : 'Map'}</span>
             </Link>
 
             {/* Organizer Hub / Dashboard Link */}

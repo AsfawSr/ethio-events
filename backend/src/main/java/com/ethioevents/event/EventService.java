@@ -260,6 +260,8 @@ public class EventService {
         event.setNeighborhood(nh);
         event.setFeatured(Boolean.TRUE.equals(request.featured()));
         event.setTags(request.tags() != null ? request.tags().trim() : "");
+        if (request.latitude() != null) event.setLatitude(request.latitude());
+        if (request.longitude() != null) event.setLongitude(request.longitude());
 
         Event savedEvent = eventRepository.save(event);
 
@@ -290,7 +292,7 @@ public class EventService {
             ));
         }
 
-        return mapToDetailDto(savedEvent);
+        return getEventBySlug(savedEvent.getSlug());
     }
 
     @Transactional
@@ -364,6 +366,37 @@ public class EventService {
         }).collect(Collectors.toList());
     }
 
+    private double[] resolveCoordinates(Event event) {
+        if (event.getLatitude() != null && event.getLongitude() != null) {
+            return new double[]{event.getLatitude(), event.getLongitude()};
+        }
+        Neighborhood nh = event.getNeighborhood() != null ? event.getNeighborhood() : Neighborhood.BOLE;
+        String venue = event.getVenueName() != null ? event.getVenueName().toLowerCase() : "";
+
+        if (venue.contains("millennium") || nh == Neighborhood.BOLE) {
+            return new double[]{9.0012, 38.7853};
+        } else if (venue.contains("uneca") || venue.contains("interluxury") || nh == Neighborhood.KAZANCHIS) {
+            return new double[]{9.0145, 38.7634};
+        } else if (venue.contains("theatre") || venue.contains("hager fikir") || nh == Neighborhood.PIASSA) {
+            return new double[]{9.0182, 38.7523};
+        } else if (venue.contains("meskel") || venue.contains("exhibition") || nh == Neighborhood.MESKEL_SQUARE) {
+            return new double[]{9.0105, 38.7612};
+        } else if (venue.contains("golf") || venue.contains("african union") || nh == Neighborhood.SARBET) {
+            return new double[]{8.9950, 38.7350};
+        } else if (venue.contains("entoto") || nh == Neighborhood.ENTOTO) {
+            return new double[]{9.0820, 38.7621};
+        } else if (venue.contains("century") || venue.contains("summit") || nh == Neighborhood.CMC) {
+            return new double[]{9.0250, 38.8350};
+        } else if (venue.contains("imperial") || nh == Neighborhood.GERJI) {
+            return new double[]{9.0020, 38.8050};
+        } else if (venue.contains("kuriftu") || venue.contains("bishoftu") || nh == Neighborhood.BISHOFTU) {
+            return new double[]{8.7520, 38.9850};
+        } else if (nh == Neighborhood.HAWASSA) {
+            return new double[]{7.0504, 38.4763};
+        }
+        return new double[]{9.0105, 38.7612};
+    }
+
     private EventDtos.EventSummaryDto mapToSummaryDto(Event event) {
         List<TicketType> tiers = ticketTypeRepository.findByEventId(event.getId());
 
@@ -378,6 +411,7 @@ public class EventService {
 
         EventCategory cat = event.getCategory() != null ? event.getCategory() : EventCategory.MUSIC_CONCERT;
         Neighborhood nh = event.getNeighborhood() != null ? event.getNeighborhood() : Neighborhood.BOLE;
+        double[] coords = resolveCoordinates(event);
 
         return new EventDtos.EventSummaryDto(
                 event.getId(),
@@ -400,7 +434,9 @@ public class EventService {
                 nh.getEnglishName(),
                 nh.getAmharicName(),
                 event.isFeatured(),
-                tagsList
+                tagsList,
+                coords[0],
+                coords[1]
         );
     }
 
@@ -425,6 +461,7 @@ public class EventService {
 
         EventCategory cat = event.getCategory() != null ? event.getCategory() : EventCategory.MUSIC_CONCERT;
         Neighborhood nh = event.getNeighborhood() != null ? event.getNeighborhood() : Neighborhood.BOLE;
+        double[] coords = resolveCoordinates(event);
 
         return new EventDtos.EventDetailDto(
                 event.getId(),
@@ -445,6 +482,8 @@ public class EventService {
                 nh.getAmharicName(),
                 event.isFeatured(),
                 tagsList,
+                coords[0],
+                coords[1],
                 tierDtos
         );
     }

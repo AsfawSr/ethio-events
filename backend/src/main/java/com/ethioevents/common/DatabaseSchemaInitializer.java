@@ -42,12 +42,18 @@ public class DatabaseSchemaInitializer implements BeanPostProcessor {
             stmt.execute("ALTER TABLE IF EXISTS events ADD COLUMN IF NOT EXISTS neighborhood VARCHAR(50) DEFAULT 'BOLE'");
             stmt.execute("ALTER TABLE IF EXISTS events ADD COLUMN IF NOT EXISTS featured BOOLEAN DEFAULT false");
             stmt.execute("ALTER TABLE IF EXISTS events ADD COLUMN IF NOT EXISTS tags VARCHAR(255) DEFAULT ''");
+            stmt.execute("ALTER TABLE IF EXISTS events ADD COLUMN IF NOT EXISTS latitude DOUBLE PRECISION");
+            stmt.execute("ALTER TABLE IF EXISTS events ADD COLUMN IF NOT EXISTS longitude DOUBLE PRECISION");
 
             // Backfill nulls
             stmt.execute("UPDATE events SET featured = false WHERE featured IS NULL");
             stmt.execute("UPDATE events SET category = 'MUSIC_CONCERT' WHERE category IS NULL");
             stmt.execute("UPDATE events SET neighborhood = 'BOLE' WHERE neighborhood IS NULL");
             stmt.execute("UPDATE events SET tags = '' WHERE tags IS NULL");
+            stmt.execute("UPDATE events SET latitude = 9.0012, longitude = 38.7853 WHERE latitude IS NULL AND (venue_name ILIKE '%Millennium%' OR neighborhood = 'BOLE')");
+            stmt.execute("UPDATE events SET latitude = 9.0145, longitude = 38.7634 WHERE latitude IS NULL AND (venue_name ILIKE '%UNECA%' OR neighborhood = 'KAZANCHIS')");
+            stmt.execute("UPDATE events SET latitude = 9.0182, longitude = 38.7523 WHERE latitude IS NULL AND (venue_name ILIKE '%Theatre%' OR neighborhood = 'PIASSA')");
+            stmt.execute("UPDATE events SET latitude = 9.0105, longitude = 38.7612 WHERE latitude IS NULL");
 
             // Safe indexes
             stmt.execute("CREATE INDEX IF NOT EXISTS idx_events_category ON events(category)");

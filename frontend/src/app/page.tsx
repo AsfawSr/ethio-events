@@ -18,11 +18,14 @@ import {
   TrendingUp,
   ArrowRight,
   Flame,
-  Tag
+  Tag,
+  LayoutGrid,
+  Map as MapIcon,
 } from 'lucide-react';
 import { EventSummary, FilterMetadata } from '@/lib/types';
 import { api } from '@/lib/api';
 import EventCard from '@/components/EventCard';
+import AddisEventsMap from '@/components/AddisEventsMap';
 import { useI18n } from '@/lib/i18n';
 
 export default function HomePage() {
@@ -32,6 +35,9 @@ export default function HomePage() {
   const [featuredEvents, setFeaturedEvents] = useState<EventSummary[]>([]);
   const [filterMeta, setFilterMeta] = useState<FilterMetadata | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // View Mode: Grid or Interactive Addis Map
+  const [viewMode, setViewMode] = useState<'grid' | 'map'>('grid');
 
   // Search & Filter State
   const [searchQuery, setSearchQuery] = useState('');
@@ -527,15 +533,58 @@ export default function HomePage() {
             </p>
           </div>
 
-          <div className="text-xs text-slate-400 bg-slate-900 px-3.5 py-2 rounded-xl border border-white/10 self-start sm:self-auto font-medium flex items-center gap-2">
-            <span>{language === 'am' ? 'የተገኙ መድረኮች:' : 'Showing'}</span>
-            <strong className="text-amber-400 font-bold">{filteredEvents.length}</strong>
-            <span>{language === 'am' ? 'መድረኮች' : 'events'}</span>
+          <div className="flex items-center gap-3 self-start sm:self-auto">
+            {/* View Mode Switcher: Grid vs Interactive Map */}
+            <div className="flex items-center p-1 rounded-xl bg-slate-900 border border-white/10 shadow-inner">
+              <button
+                type="button"
+                onClick={() => setViewMode('grid')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+                  viewMode === 'grid'
+                    ? 'bg-amber-500 text-black shadow-glowGold'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <LayoutGrid className="h-3.5 w-3.5" />
+                <span>{language === 'am' ? 'ዝርዝር' : 'Grid'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setViewMode('map')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+                  viewMode === 'map'
+                    ? 'bg-amber-500 text-black shadow-glowGold'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <MapIcon className="h-3.5 w-3.5" />
+                <span>{language === 'am' ? 'ካርታ' : 'Addis Map'}</span>
+              </button>
+            </div>
+
+            <div className="text-xs text-slate-400 bg-slate-900 px-3 py-2 rounded-xl border border-white/10 font-medium flex items-center gap-1.5">
+              <strong className="text-amber-400 font-bold">{filteredEvents.length}</strong>
+              <span className="hidden sm:inline">{language === 'am' ? 'መድረኮች' : 'events'}</span>
+            </div>
           </div>
         </div>
 
-        {/* Events Grid */}
-        {loading ? (
+        {/* Content View: Map View OR Grid View */}
+        {viewMode === 'map' ? (
+          <div className="space-y-4">
+            <AddisEventsMap events={filteredEvents} />
+            <div className="flex justify-end">
+              <Link
+                href="/map"
+                className="text-xs font-bold text-amber-400 hover:text-amber-300 flex items-center gap-1 bg-slate-900/80 px-3 py-2 rounded-xl border border-white/10 transition"
+              >
+                <span>{language === 'am' ? 'ሙሉ የካርታ ገጽ ክፈት' : 'Open Full-Screen Explorer'}</span>
+                <ArrowRight className="h-3.5 w-3.5" />
+              </Link>
+            </div>
+          </div>
+        ) : loading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-pulse">
             {[1, 2, 3, 4, 5, 6].map((n) => (
               <div key={n} className="h-96 rounded-3xl bg-slate-900 border border-white/5" />
