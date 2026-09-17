@@ -38,7 +38,43 @@ public class DataSeeder implements CommandLineRunner {
     @Override
     public void run(String... args) {
         if (eventRepository.count() > 0) {
-            log.info("Database already contains events. Skipping seed.");
+            log.info("Database contains existing events. Verifying metadata backfills...");
+            eventRepository.findAll().forEach(ev -> {
+                boolean changed = false;
+                if (ev.getCategory() == null) {
+                    ev.setCategory(EventCategory.MUSIC_CONCERT);
+                    changed = true;
+                }
+                if (ev.getNeighborhood() == null) {
+                    ev.setNeighborhood(Neighborhood.BOLE);
+                    changed = true;
+                }
+                if (ev.getTags() == null) {
+                    ev.setTags("");
+                    changed = true;
+                }
+                if (ev.getSlug() != null && ev.getSlug().contains("rophnan")) {
+                    ev.setFeatured(true);
+                    ev.setCategory(EventCategory.MUSIC_CONCERT);
+                    ev.setNeighborhood(Neighborhood.BOLE);
+                    ev.setTags("EDM,Electronic,Rophnan,Live,Millennium Hall");
+                    changed = true;
+                } else if (ev.getSlug() != null && ev.getSlug().contains("tech-summit")) {
+                    ev.setFeatured(true);
+                    ev.setCategory(EventCategory.TECH_SUMMIT);
+                    ev.setNeighborhood(Neighborhood.BOLE);
+                    ev.setTags("AI,Fintech,Skylight,Startup,Innovation");
+                    changed = true;
+                } else if (ev.getSlug() != null && ev.getSlug().contains("comedy")) {
+                    ev.setCategory(EventCategory.COMEDY_THEATRE);
+                    ev.setNeighborhood(Neighborhood.PIASSA);
+                    ev.setTags("Standup,Ethio-Jazz,Ghion,Comedy");
+                    changed = true;
+                }
+                if (changed) {
+                    eventRepository.save(ev);
+                }
+            });
             return;
         }
 
