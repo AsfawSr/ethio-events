@@ -44,6 +44,8 @@ import {
   Bell,
   MessageSquare,
   Check,
+  Code,
+  Globe,
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { authStorage } from '@/lib/auth';
@@ -82,8 +84,18 @@ export default function OrganizerPortalPage() {
   const [settlements, setSettlements] = useState<SettlementSummaryItem[]>([]);
   const [promos, setPromos] = useState<PromoCodeItem[]>([]);
   const [affiliates, setAffiliates] = useState<AffiliateItem[]>([]);
-  const [dashboardTab, setDashboardTab] = useState<'events' | 'settlements' | 'livegate' | 'promos' | 'affiliates' | 'reports' | 'broadcasts'>('events');
+  const [dashboardTab, setDashboardTab] = useState<'events' | 'settlements' | 'livegate' | 'promos' | 'affiliates' | 'reports' | 'broadcasts' | 'widgets'>('events');
   const [loading, setLoading] = useState(true);
+
+  // White-Label Embeddable Widget Configurator State
+  const [selectedWidgetSlug, setSelectedWidgetSlug] = useState<string>('');
+  const [widgetDisplayMode, setWidgetDisplayMode] = useState<'inline' | 'button' | 'floating'>('inline');
+  const [widgetTheme, setWidgetTheme] = useState<'dark' | 'light'>('dark');
+  const [widgetAccentColor, setWidgetAccentColor] = useState<string>('#F59E0B');
+  const [widgetLang, setWidgetLang] = useState<'en' | 'am'>('en');
+  const [widgetAffiliateRef, setWidgetAffiliateRef] = useState<string>('');
+  const [copiedSnippet, setCopiedSnippet] = useState(false);
+  const [copiedDirectUrl, setCopiedDirectUrl] = useState(false);
 
   // Reports & Financial Analytics State
   const [selectedReportEventId, setSelectedReportEventId] = useState<string>('');
@@ -181,6 +193,9 @@ export default function OrganizerPortalPage() {
   useEffect(() => {
     if (myEvents.length > 0 && !selectedReportEventId) {
       setSelectedReportEventId(myEvents[0].id);
+    }
+    if (myEvents.length > 0 && !selectedWidgetSlug) {
+      setSelectedWidgetSlug(myEvents[0].slug);
     }
   }, [myEvents]);
 
@@ -918,6 +933,18 @@ export default function OrganizerPortalPage() {
             >
               <Megaphone className="h-4 w-4" />
               SMS Broadcasts ({broadcasts.length})
+            </button>
+
+            <button
+              onClick={() => setDashboardTab('widgets')}
+              className={`px-4 py-2 rounded-xl text-sm font-bold transition flex items-center gap-2 ${
+                dashboardTab === 'widgets'
+                  ? 'bg-amber-500 text-black shadow-glowGold'
+                  : 'text-slate-400 hover:text-white bg-slate-900/60 hover:bg-slate-800'
+              }`}
+            >
+              <Code className="h-4 w-4" />
+              Embeddable Widgets
             </button>
           </div>
 
@@ -2185,6 +2212,339 @@ export default function OrganizerPortalPage() {
                     </table>
                   </div>
                 )}
+              </div>
+            </div>
+          )}
+
+          {/* TAB 8: White-Label Embeddable Ticket Widgets (የድር ጣቢያ ቲኬት መሸጫ ዊድጄት) */}
+          {dashboardTab === 'widgets' && (
+            <div className="space-y-6 animate-fadeIn">
+              {/* Header Bar */}
+              <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-400 flex-shrink-0">
+                    <Code className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-white flex items-center gap-2">
+                      White-Label Embeddable Ticket Widgets
+                      <span className="text-[10px] font-mono uppercase bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded-full border border-amber-500/30">
+                        Drop-in SDK
+                      </span>
+                    </h3>
+                    <p className="text-xs text-slate-400">
+                      Sell tickets directly on your WordPress, Wix, Squarespace, or custom website with instant Telebirr & CBE checkout.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <Link
+                    href="/widget-demo"
+                    target="_blank"
+                    className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-amber-400 via-amber-300 to-yellow-400 px-4 py-2.5 text-xs font-bold text-black shadow-glowGold hover:from-amber-300 transition"
+                  >
+                    <Globe className="h-4 w-4 text-black" />
+                    <span>View Live Demo Website</span>
+                    <ExternalLink className="h-3.5 w-3.5 text-black" />
+                  </Link>
+                </div>
+              </div>
+
+              {/* 2-Column Grid: Configurator on Left, Live Preview & Code on Right */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                {/* Left Column: Widget Configurator */}
+                <div className="lg:col-span-5 rounded-2xl border border-white/10 bg-slate-900/60 p-5 space-y-5 text-xs">
+                  <div className="border-b border-white/10 pb-3">
+                    <h4 className="text-sm font-bold text-white">Widget Appearance & Settings</h4>
+                    <p className="text-[11px] text-slate-400 mt-0.5">Customize theme, language, and display layout</p>
+                  </div>
+
+                  {/* Event Selector */}
+                  <div>
+                    <label className="block text-slate-300 font-bold mb-1.5">
+                      Target Event *
+                    </label>
+                    <select
+                      value={selectedWidgetSlug}
+                      onChange={(e) => setSelectedWidgetSlug(e.target.value)}
+                      className="w-full bg-slate-800 border border-slate-700 text-white font-semibold rounded-xl px-3.5 py-2.5 focus:outline-none focus:border-amber-400"
+                    >
+                      {myEvents.map((ev) => (
+                        <option key={ev.id} value={ev.slug}>
+                          {ev.title} ({ev.venueName})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Display Mode */}
+                  <div>
+                    <label className="block text-slate-300 font-bold mb-1.5">
+                      Display Format Layout
+                    </label>
+                    <div className="grid grid-cols-3 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setWidgetDisplayMode('inline')}
+                        className={`p-3 rounded-xl border text-center transition ${
+                          widgetDisplayMode === 'inline'
+                            ? 'bg-amber-500/15 border-amber-500 text-white font-bold'
+                            : 'bg-slate-800/60 border-slate-700 text-slate-400 hover:text-white'
+                        }`}
+                      >
+                        <span className="block font-bold text-xs">Inline Box</span>
+                        <span className="text-[10px] text-slate-400">Embedded in page</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setWidgetDisplayMode('button')}
+                        className={`p-3 rounded-xl border text-center transition ${
+                          widgetDisplayMode === 'button'
+                            ? 'bg-amber-500/15 border-amber-500 text-white font-bold'
+                            : 'bg-slate-800/60 border-slate-700 text-slate-400 hover:text-white'
+                        }`}
+                      >
+                        <span className="block font-bold text-xs">Modal Button</span>
+                        <span className="text-[10px] text-slate-400">Lightbox popup</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setWidgetDisplayMode('floating')}
+                        className={`p-3 rounded-xl border text-center transition ${
+                          widgetDisplayMode === 'floating'
+                            ? 'bg-amber-500/15 border-amber-500 text-white font-bold'
+                            : 'bg-slate-800/60 border-slate-700 text-slate-400 hover:text-white'
+                        }`}
+                      >
+                        <span className="block font-bold text-xs">Floating Badge</span>
+                        <span className="text-[10px] text-slate-400">Corner sticky</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Color Theme & Accent */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-slate-300 font-bold mb-1.5">
+                        Color Theme
+                      </label>
+                      <select
+                        value={widgetTheme}
+                        onChange={(e) => setWidgetTheme(e.target.value as any)}
+                        className="w-full bg-slate-800 border border-slate-700 text-white font-semibold rounded-xl px-3 py-2 focus:outline-none focus:border-amber-400"
+                      >
+                        <option value="dark">Habesha Dark Glass</option>
+                        <option value="light">Clean Light Mode</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-slate-300 font-bold mb-1.5">
+                        Language
+                      </label>
+                      <select
+                        value={widgetLang}
+                        onChange={(e) => setWidgetLang(e.target.value as any)}
+                        className="w-full bg-slate-800 border border-slate-700 text-white font-semibold rounded-xl px-3 py-2 focus:outline-none focus:border-amber-400"
+                      >
+                        <option value="en">English (US/UK)</option>
+                        <option value="am">አማርኛ (Amharic)</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Accent Brand Color Swatches */}
+                  <div>
+                    <label className="block text-slate-300 font-bold mb-1.5">
+                      Brand Accent Color ({widgetAccentColor})
+                    </label>
+                    <div className="flex items-center gap-2">
+                      {[
+                        { name: 'Gold', hex: '#F59E0B' },
+                        { name: 'Emerald', hex: '#10B981' },
+                        { name: 'Indigo', hex: '#6366F1' },
+                        { name: 'Rose', hex: '#F43F5E' },
+                        { name: 'Purple', hex: '#8B5CF6' },
+                        { name: 'Cyan', hex: '#06B6D4' },
+                      ].map((c) => (
+                        <button
+                          key={c.hex}
+                          type="button"
+                          onClick={() => setWidgetAccentColor(c.hex)}
+                          className={`h-7 w-7 rounded-full transition transform flex items-center justify-center ${
+                            widgetAccentColor === c.hex ? 'scale-110 ring-2 ring-white' : 'opacity-80 hover:opacity-100'
+                          }`}
+                          style={{ backgroundColor: c.hex }}
+                          title={c.name}
+                        >
+                          {widgetAccentColor === c.hex && <Check className="h-3.5 w-3.5 text-black" />}
+                        </button>
+                      ))}
+                      <input
+                        type="color"
+                        value={widgetAccentColor}
+                        onChange={(e) => setWidgetAccentColor(e.target.value)}
+                        className="h-8 w-8 rounded-lg bg-transparent border-0 cursor-pointer ml-1"
+                        title="Custom Color"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Promoter Referral Tag */}
+                  <div>
+                    <label className="block text-slate-300 font-bold mb-1.5">
+                      Attach Promoter Affiliate Tag (Optional)
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-2 text-slate-500 font-mono font-bold">@</span>
+                      <input
+                        type="text"
+                        placeholder="e.g. tikvahethiopia"
+                        value={widgetAffiliateRef}
+                        onChange={(e) => setWidgetAffiliateRef(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ''))}
+                        className="w-full bg-slate-800 border border-slate-700 rounded-xl pl-7 pr-3 py-2 text-white font-mono text-xs focus:outline-none focus:border-amber-400 placeholder:text-slate-500"
+                      />
+                    </div>
+                    <span className="text-[10px] text-slate-400 block mt-1">
+                      Attaches automated referral commissions to sales generated from this widget.
+                    </span>
+                  </div>
+                </div>
+
+                {/* Right Column: Live Interactive Preview & Snippet Generator */}
+                <div className="lg:col-span-7 space-y-5 text-xs">
+                  {/* Real-Time Live Simulated Website Container */}
+                  <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-4 space-y-3">
+                    <div className="flex items-center justify-between border-b border-white/10 pb-2.5">
+                      <div className="flex items-center gap-2">
+                        <div className="flex gap-1.5">
+                          <span className="h-2.5 w-2.5 rounded-full bg-rose-500/80" />
+                          <span className="h-2.5 w-2.5 rounded-full bg-amber-500/80" />
+                          <span className="h-2.5 w-2.5 rounded-full bg-emerald-500/80" />
+                        </div>
+                        <span className="text-[11px] font-mono text-slate-400 bg-slate-800/80 px-3 py-0.5 rounded-md">
+                          https://yourwebsite.et/tickets
+                        </span>
+                      </div>
+                      <span className="text-[10px] font-mono text-amber-400 font-bold uppercase">
+                        Live Preview
+                      </span>
+                    </div>
+
+                    {/* Rendered Preview Iframe */}
+                    <div className="rounded-xl overflow-hidden border border-white/10 bg-black/40">
+                      {selectedWidgetSlug ? (
+                        <iframe
+                          key={`${selectedWidgetSlug}-${widgetTheme}-${widgetAccentColor}-${widgetLang}`}
+                          src={`/embed/${selectedWidgetSlug}?theme=${widgetTheme}&color=${encodeURIComponent(
+                            widgetAccentColor
+                          )}&lang=${widgetLang}${widgetAffiliateRef ? '&ref=' + widgetAffiliateRef : ''}`}
+                          className="w-full h-[460px] border-none"
+                          title="EthioEvents Widget Preview"
+                        />
+                      ) : (
+                        <div className="p-12 text-center text-slate-500">
+                          Please select an event on the left to preview widget
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* 1-Click Code Snippet Generator */}
+                  <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-5 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+                        <Code className="h-4 w-4 text-amber-400" />
+                        Embed HTML Code Snippet
+                      </h4>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const hostUrl = typeof window !== 'undefined' ? window.location.origin : 'https://ethioevents.et';
+                          const snippet =
+                            widgetDisplayMode === 'inline'
+                              ? `<!-- EthioEvents Ticket Widget -->\n<div id="ethioevents-ticket-widget" data-event-slug="${selectedWidgetSlug}" data-theme="${widgetTheme}" data-color="${widgetAccentColor}" data-lang="${widgetLang}"${
+                                  widgetAffiliateRef ? ` data-ref="${widgetAffiliateRef}"` : ''
+                                }></div>\n<script src="${hostUrl}/widget.js" async></script>`
+                              : `<!-- EthioEvents Ticket Modal Button -->\n<button class="ethioevents-buy-btn" data-event-slug="${selectedWidgetSlug}" data-theme="${widgetTheme}" data-color="${widgetAccentColor}" data-lang="${widgetLang}"${
+                                  widgetAffiliateRef ? ` data-ref="${widgetAffiliateRef}"` : ''
+                                }>\n  🎟️ Buy Tickets\n</button>\n<script src="${hostUrl}/widget.js" async></script>`;
+
+                          navigator.clipboard.writeText(snippet);
+                          setCopiedSnippet(true);
+                          setTimeout(() => setCopiedSnippet(false), 2000);
+                        }}
+                        className="inline-flex items-center gap-1 text-[11px] font-bold text-black bg-gradient-to-r from-amber-400 to-yellow-400 px-3 py-1.5 rounded-lg shadow-sm hover:from-amber-300 transition"
+                      >
+                        {copiedSnippet ? (
+                          <>
+                            <CheckCircle2 className="h-3.5 w-3.5 text-black" />
+                            <span>Copied to Clipboard!</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="h-3.5 w-3.5 text-black" />
+                            <span>Copy Embed Snippet</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+
+                    <pre className="p-3.5 rounded-xl bg-slate-950 text-slate-300 font-mono text-[11px] overflow-x-auto border border-white/5 whitespace-pre">
+{widgetDisplayMode === 'inline'
+  ? `<!-- 1. Embed Container -->
+<div id="ethioevents-ticket-widget"
+     data-event-slug="${selectedWidgetSlug}"
+     data-theme="${widgetTheme}"
+     data-color="${widgetAccentColor}"
+     data-lang="${widgetLang}"${widgetAffiliateRef ? `\n     data-ref="${widgetAffiliateRef}"` : ''}></div>
+
+<!-- 2. Drop-In JS SDK -->
+<script src="${typeof window !== 'undefined' ? window.location.origin : 'https://ethioevents.et'}/widget.js" async></script>`
+  : `<!-- 1. Trigger Button -->
+<button class="ethioevents-buy-btn"
+        data-event-slug="${selectedWidgetSlug}"
+        data-theme="${widgetTheme}"
+        data-color="${widgetAccentColor}"
+        data-lang="${widgetLang}"${widgetAffiliateRef ? `\n        data-ref="${widgetAffiliateRef}"` : ''}>
+  🎟️ Buy Tickets
+</button>
+
+<!-- 2. Drop-In JS SDK -->
+<script src="${typeof window !== 'undefined' ? window.location.origin : 'https://ethioevents.et'}/widget.js" async></script>`}
+                    </pre>
+
+                    {/* Direct Standalone Checkout Link */}
+                    <div className="pt-2 border-t border-white/10 flex items-center justify-between">
+                      <div className="min-w-0 pr-3">
+                        <span className="text-[10px] text-slate-400 block font-bold uppercase">Direct Checkout URL:</span>
+                        <span className="text-slate-300 font-mono text-[11px] truncate block">
+                          {typeof window !== 'undefined' ? window.location.origin : 'https://ethioevents.et'}/embed/{selectedWidgetSlug}?theme={widgetTheme}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1.5 flex-shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const hostUrl = typeof window !== 'undefined' ? window.location.origin : 'https://ethioevents.et';
+                            const directUrl = `${hostUrl}/embed/${selectedWidgetSlug}?theme=${widgetTheme}&color=${encodeURIComponent(
+                              widgetAccentColor
+                            )}&lang=${widgetLang}${widgetAffiliateRef ? '&ref=' + widgetAffiliateRef : ''}`;
+                            navigator.clipboard.writeText(directUrl);
+                            setCopiedDirectUrl(true);
+                            setTimeout(() => setCopiedDirectUrl(false), 2000);
+                          }}
+                          className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-[11px] font-semibold transition"
+                        >
+                          {copiedDirectUrl ? 'Copied!' : 'Copy Link'}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           )}
