@@ -79,4 +79,24 @@ public class PublicTicketController {
         Map<String, Object> googlePass = mobileWalletPassService.generateGoogleWalletPassPayload(ticket, dto);
         return ResponseEntity.ok(ApiResponse.ok(googlePass));
     }
+
+    /**
+     * Transfer ticket to friend with cryptographic re-signing and SMS pass dispatch
+     */
+    @PostMapping("/transfer")
+    public ResponseEntity<ApiResponse<TicketDtos.TransferTicketResponse>> transferTicket(
+            @RequestBody TicketDtos.TransferTicketRequest request) {
+        TicketDtos.TransferTicketResponse response = ticketService.transferTicket(request);
+        return ResponseEntity.ok(ApiResponse.ok(response));
+    }
+
+    /**
+     * Get transfer history / audit trail for a ticket
+     */
+    @GetMapping("/transfers/{ticketCode}")
+    public ResponseEntity<ApiResponse<java.util.List<TicketDtos.TicketTransferHistoryDto>>> getTicketTransferHistory(
+            @PathVariable String ticketCode) {
+        java.util.List<TicketDtos.TicketTransferHistoryDto> history = ticketService.getTransferHistoryByTicketCode(ticketCode);
+        return ResponseEntity.ok(ApiResponse.ok(history));
+    }
 }
