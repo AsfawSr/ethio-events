@@ -47,17 +47,17 @@ public class Event {
     private EventStatus status = EventStatus.PUBLISHED;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "category", length = 50)
+    @Column(name = "category", length = 50, columnDefinition = "varchar(50) default 'MUSIC_CONCERT'")
     private EventCategory category = EventCategory.MUSIC_CONCERT;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "neighborhood", length = 50)
+    @Column(name = "neighborhood", length = 50, columnDefinition = "varchar(50) default 'BOLE'")
     private Neighborhood neighborhood = Neighborhood.BOLE;
 
-    @Column(name = "featured", nullable = false)
+    @Column(name = "featured", columnDefinition = "boolean default false")
     private boolean featured = false;
 
-    @Column(name = "tags", length = 255)
+    @Column(name = "tags", length = 255, columnDefinition = "varchar(255) default ''")
     private String tags = "";
 
     @OneToMany(mappedBy = "event", cascade = CascadeType.ALL, orphanRemoval = true)
