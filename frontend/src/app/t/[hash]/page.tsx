@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import {
   Calendar,
   MapPin,
@@ -17,19 +17,45 @@ import {
   Loader2,
   Check,
   ExternalLink,
+  Send,
+  History,
+  X,
+  Gift,
+  ArrowRight,
+  Info,
+  Copy,
+  MessageCircle,
 } from 'lucide-react';
-import { PublicTicketDetails } from '@/lib/types';
+import { PublicTicketDetails, TransferTicketResponse, TicketTransferHistoryItem } from '@/lib/types';
 import { api } from '@/lib/api';
 
 export default function StandaloneTicketPassPage() {
   const params = useParams();
+  const router = useRouter();
   const hash = params?.hash as string;
 
   const [ticket, setTicket] = useState<PublicTicketDetails | null>(null);
   const [loading, setLoading] = useState(true);
+  const [transferredError, setTransferredError] = useState<string | null>(null);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [copied, setCopied] = useState(false);
   const [currentTime, setCurrentTime] = useState<string>('');
+
+  // Transfer Modal State
+  const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
+  const [transferSenderName, setTransferSenderName] = useState('');
+  const [transferSenderPhone, setTransferSenderPhone] = useState('');
+  const [recipientName, setRecipientName] = useState('');
+  const [recipientPhone, setRecipientPhone] = useState('');
+  const [transferReason, setTransferReason] = useState('');
+  const [transferring, setTransferring] = useState(false);
+  const [transferError, setTransferError] = useState<string | null>(null);
+  const [transferSuccess, setTransferSuccess] = useState<TransferTicketResponse | null>(null);
+
+  // Transfer History State
+  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+  const [transferHistory, setTransferHistory] = useState<TicketTransferHistoryItem[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
 
   useEffect(() => {
     // Dynamic live clock for anti-screenshot watermark
@@ -43,32 +69,40 @@ export default function StandaloneTicketPassPage() {
     async function loadTicket() {
       if (!hash) return;
       try {
+        setTransferredError(null);
         const data = await api.getPublicTicketByHash(hash);
         setTicket(data);
-      } catch (e) {
-        // Fallback mock pass
-        setTicket({
-          ticketCode: 'ETH-8K9B2X',
-          eventTitle: 'ROPHNAN - SOST (፫) LIVE in Addis Ababa',
-          eventSlug: 'rophnan-sost-live-millennium-hall',
-          venueName: 'Millennium Hall (ሚሌኒየም አዳራሽ)',
-          venueAddress: 'Bole Sub-City, Africa Avenue, Addis Ababa',
-          eventStartTime: {
-            isoUtc: '2026-10-10T15:00:00Z',
-            gregorianFormatted: 'Sat, Oct 10, 2026, 6:00 PM EAT',
-            ethiopianDateFormatted: 'ቅዳሜ ጥቅምት 1, 2019',
-            ethiopianTimeFormatted: 'ምሽት 12:00 ሰዓት',
-            ethiopianFullFormatted: 'ቅዳሜ ጥቅምት 1, 2019 (ምሽት 12:00 ሰዓት)',
-          },
-          tierName: 'VIP Front Stage',
-          attendeeName: 'Abebe Bikila',
-          attendeePhone: '+251911223344',
-          status: 'ISSUED',
-          qrCodeBase64:
-            'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=v1.mock_ticket_id.mock_event_id.mock_nonce.1788784330.mock_signature',
-          qrPayload: 'v1.mock_ticket_id.mock_event_id.mock_nonce.1788784330.mock_signature',
-          securityHash: hash,
-        });
+        setTransferSenderName(data.attendeeName || '');
+        setTransferSenderPhone(data.attendeePhone || '');
+      } catch (err: any) {
+        const errorMsg = err?.message || '';
+        if (errorMsg.includes('transferred') || err?.code === 'TICKET_TRANSFERRED') {
+          setTransferredError(errorMsg || 'This ticket was transferred to another recipient and the current pass has been revoked.');
+        } else {
+          // Fallback mock pass for offline preview
+          setTicket({
+            ticketCode: 'ETH-8K9B2X',
+            eventTitle: 'ROPHNAN - SOST (፫) LIVE in Addis Ababa',
+            eventSlug: 'rophnan-sost-live-millennium-hall',
+            venueName: 'Millennium Hall (ሚሌኒየም አዳራሽ)',
+            venueAddress: 'Bole Sub-City, Africa Avenue, Addis Ababa',
+            eventStartTime: {
+              isoUtc: '2026-10-10T15:00:00Z',
+              gregorianFormatted: 'Sat, Oct 10, 2026, 6:00 PM EAT',
+              ethiopianDateFormatted: 'ቅዳሜ ጥቅምት 1, 2019',
+              ethiopianTimeFormatted: 'ምሽት 12:00 ሰዓት',
+              ethiopianFullFormatted: 'ቅዳሜ ጥቅምት 1, 2019 (ምሽት 12:00 ሰዓት)',
+            },
+            tierName: 'VIP Front Stage',
+            attendeeName: 'Abebe Bikila',
+            attendeePhone: '+251911223344',
+            status: 'ISSUED',
+            qrCodeBase64:
+              'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=v1.mock_ticket_id.mock_event_id.mock_nonce.1788784330.mock_signature',
+            qrPayload: 'v1.mock_ticket_id.mock_event_id.mock_nonce.1788784330.mock_signature',
+            securityHash: hash,
+          });
+        }
       } finally {
         setLoading(false);
       }
@@ -138,7 +172,54 @@ export default function StandaloneTicketPassPage() {
     }
   };
 
-  if (loading || !ticket) {
+  const handleTransferSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!ticket) return;
+
+    if (!recipientName.trim()) {
+      setTransferError('Please enter recipient full name');
+      return;
+    }
+    if (!recipientPhone.trim() || recipientPhone.trim().length < 9) {
+      setTransferError('Please enter a valid recipient phone number (e.g., 0911223344 or +251911223344)');
+      return;
+    }
+
+    setTransferring(true);
+    setTransferError(null);
+
+    try {
+      const res = await api.transferTicket({
+        ticketSecurityHash: hash,
+        senderName: transferSenderName || ticket.attendeeName,
+        senderPhone: transferSenderPhone || ticket.attendeePhone,
+        recipientName: recipientName.trim(),
+        recipientPhone: recipientPhone.trim(),
+        reason: transferReason.trim() || 'Gifted via EthioEvents',
+      });
+      setTransferSuccess(res);
+    } catch (err: any) {
+      setTransferError(err?.message || 'Ticket transfer failed. Please try again.');
+    } finally {
+      setTransferring(false);
+    }
+  };
+
+  const handleOpenHistory = async () => {
+    if (!ticket) return;
+    setIsHistoryModalOpen(true);
+    setLoadingHistory(true);
+    try {
+      const hist = await api.getTicketTransferHistory(ticket.ticketCode);
+      setTransferHistory(hist);
+    } catch {
+      setTransferHistory([]);
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
+
+  if (loading) {
     return (
       <div className="mx-auto max-w-md py-24 px-4 text-center">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-amber-400 border-t-transparent mx-auto" />
@@ -146,6 +227,48 @@ export default function StandaloneTicketPassPage() {
       </div>
     );
   }
+
+  // Transferred / Revoked State
+  if (transferredError) {
+    return (
+      <div className="min-h-screen py-16 px-4 flex flex-col items-center justify-center space-y-6">
+        <div className="w-full max-w-md rounded-3xl bg-slate-900/90 border border-amber-500/30 p-8 text-center space-y-5 shadow-2xl">
+          <div className="h-16 w-16 rounded-2xl bg-amber-500/10 text-amber-400 border border-amber-500/30 flex items-center justify-center mx-auto">
+            <Gift className="h-8 w-8" />
+          </div>
+
+          <div className="space-y-2">
+            <span className="text-[11px] font-black uppercase tracking-widest text-amber-400">
+              Ticket Transferred
+            </span>
+            <h1 className="text-xl font-black text-white">Pass Re-Signed & Revoked</h1>
+            <p className="text-xs text-slate-300 leading-relaxed">
+              {transferredError}
+            </p>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-slate-950 border border-white/10 text-xs text-slate-400 text-left space-y-2">
+            <p className="flex items-center gap-1.5 text-amber-400 font-bold">
+              <ShieldCheck className="h-4 w-4" />
+              <span>Ed25519 Cryptographic Security</span>
+            </p>
+            <p className="text-[11px] leading-relaxed">
+              For anti-counterfeit protection, the QR code on this link has been automatically revoked and replaced with a newly minted cryptographic pass sent to the recipient via SMS.
+            </p>
+          </div>
+
+          <button
+            onClick={() => router.push('/my-tickets')}
+            className="w-full py-3 rounded-2xl bg-amber-400 hover:bg-amber-300 text-black font-extrabold text-xs transition active:scale-95 shadow-glowGold"
+          >
+            Go to My Ticket Wallet
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!ticket) return null;
 
   const isCheckedIn = ticket.status === 'CHECKED_IN';
 
@@ -163,8 +286,23 @@ export default function StandaloneTicketPassPage() {
           ) : (
             <Download className="h-4 w-4 text-black" />
           )}
-          <span>{downloadingPdf ? 'Generating PDF...' : 'Download PDF Pass'}</span>
+          <span>{downloadingPdf ? 'PDF...' : 'PDF Pass'}</span>
         </button>
+
+        {!isCheckedIn && (
+          <button
+            onClick={() => {
+              setTransferSuccess(null);
+              setTransferError(null);
+              setIsTransferModalOpen(true);
+            }}
+            className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-amber-500/20 to-yellow-500/20 hover:from-amber-500/30 hover:to-yellow-500/30 text-amber-300 font-bold py-2.5 px-3 text-xs border border-amber-500/30 transition active:scale-95"
+            title="Transfer or gift this ticket to a friend"
+          >
+            <Gift className="h-4 w-4 text-amber-400" />
+            <span>Transfer</span>
+          </button>
+        )}
 
         <button
           onClick={handlePrint}
@@ -181,7 +319,7 @@ export default function StandaloneTicketPassPage() {
           title="Share ticket link"
         >
           {copied ? <Check className="h-4 w-4 text-emerald-400" /> : <Share2 className="h-4 w-4 text-slate-300" />}
-          <span>{copied ? 'Link Copied!' : 'Share'}</span>
+          <span>{copied ? 'Copied' : 'Share'}</span>
         </button>
       </div>
 
@@ -238,8 +376,9 @@ export default function StandaloneTicketPassPage() {
             )}
           </div>
 
-          <p className="text-[11px] text-slate-400 mt-3 font-mono">
-            Cryptographically Signed with Ed25519
+          <p className="text-[11px] text-slate-400 mt-3 font-mono flex items-center gap-1.5">
+            <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" />
+            <span>Cryptographically Signed with Ed25519</span>
           </p>
         </div>
 
@@ -275,10 +414,29 @@ export default function StandaloneTicketPassPage() {
             </p>
           </div>
 
-          {/* Gate Scanner Notice */}
-          <div className="flex items-center gap-2 text-[11px] text-emerald-400 font-medium justify-center pt-2">
-            <ShieldCheck className="h-4 w-4 shrink-0" />
-            <span>Works offline at Millennium Hall turnstiles</span>
+          {/* Transfer & History Links */}
+          <div className="flex items-center justify-between pt-2 border-t border-white/10 text-xs">
+            <button
+              onClick={handleOpenHistory}
+              className="inline-flex items-center gap-1 text-slate-400 hover:text-amber-400 transition"
+            >
+              <History className="h-3.5 w-3.5" />
+              <span>Transfer History</span>
+            </button>
+
+            {!isCheckedIn && (
+              <button
+                onClick={() => {
+                  setTransferSuccess(null);
+                  setTransferError(null);
+                  setIsTransferModalOpen(true);
+                }}
+                className="inline-flex items-center gap-1 font-bold text-amber-400 hover:text-amber-300 transition"
+              >
+                <Gift className="h-3.5 w-3.5" />
+                <span>Gift to Friend</span>
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -305,6 +463,245 @@ export default function StandaloneTicketPassPage() {
           </button>
         </div>
       </div>
+
+      {/* P2P Ticket Transfer Modal */}
+      {isTransferModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn">
+          <div className="w-full max-w-md rounded-3xl bg-[#0F172A] border border-amber-500/30 p-6 space-y-5 shadow-2xl relative">
+            <button
+              onClick={() => setIsTransferModalOpen(false)}
+              className="absolute top-5 right-5 text-slate-400 hover:text-white p-1 rounded-lg hover:bg-white/10 transition"
+            >
+              <X className="h-5 w-5" />
+            </button>
+
+            {!transferSuccess ? (
+              <>
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2 text-amber-400">
+                    <Gift className="h-5 w-5" />
+                    <h2 className="text-lg font-black text-white">Transfer Ticket to Friend</h2>
+                  </div>
+                  <p className="text-xs text-slate-400">
+                    Pass: <span className="font-mono text-amber-300 font-bold">{ticket.ticketCode}</span> ({ticket.tierName})
+                  </p>
+                </div>
+
+                {/* Cryptographic Security Warning */}
+                <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-xs space-y-1.5">
+                  <div className="flex items-center gap-1.5 font-bold text-amber-400">
+                    <ShieldCheck className="h-4 w-4 shrink-0" />
+                    <span>Cryptographic Re-Signing Notice</span>
+                  </div>
+                  <p className="text-[11px] text-slate-300 leading-relaxed">
+                    Transferring permanently revokes this QR code. A brand new Ed25519 pass will be generated and dispatched via SMS directly to your recipient.
+                  </p>
+                </div>
+
+                {transferError && (
+                  <div className="p-3 rounded-xl bg-rose-500/20 border border-rose-500/40 text-xs text-rose-300">
+                    {transferError}
+                  </div>
+                )}
+
+                <form onSubmit={handleTransferSubmit} className="space-y-3.5">
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-300 mb-1">
+                      Recipient Full Name (የተቀባይ ሙሉ ስም) *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. Kidus Tesfaye"
+                      value={recipientName}
+                      onChange={(e) => setRecipientName(e.target.value)}
+                      className="w-full bg-slate-900 border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-400"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-300 mb-1">
+                      Recipient Phone Number (የተቀባይ ስልክ ቁጥር) *
+                    </label>
+                    <input
+                      type="tel"
+                      required
+                      placeholder="0911223344 or +251911223344"
+                      value={recipientPhone}
+                      onChange={(e) => setRecipientPhone(e.target.value)}
+                      className="w-full bg-slate-900 border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-400 font-mono"
+                    />
+                    <p className="text-[10px] text-slate-500 mt-1">
+                      Recipient will receive an instant SMS with their official digital pass.
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-300 mb-1">
+                      Gift Message / Note (ምኞት ወይም መልእክት)
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Enjoy the concert! 🎵"
+                      value={transferReason}
+                      onChange={(e) => setTransferReason(e.target.value)}
+                      className="w-full bg-slate-900 border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-400"
+                    />
+                  </div>
+
+                  <div className="pt-2 flex items-center justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setIsTransferModalOpen(false)}
+                      className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-300 transition"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={transferring}
+                      className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-400 to-yellow-400 hover:from-amber-300 hover:to-yellow-300 text-black text-xs font-black shadow-glowGold active:scale-95 transition disabled:opacity-50"
+                    >
+                      {transferring ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin text-black" />
+                          <span>Re-signing & Sending...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Send className="h-4 w-4 text-black" />
+                          <span>Confirm Transfer</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </form>
+              </>
+            ) : (
+              /* Success Transfer Screen */
+              <div className="text-center space-y-4 py-2">
+                <div className="h-14 w-14 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 flex items-center justify-center mx-auto animate-bounce">
+                  <CheckCircle className="h-8 w-8" />
+                </div>
+
+                <div className="space-y-1">
+                  <h3 className="text-lg font-black text-white">Ticket Successfully Transferred!</h3>
+                  <p className="text-xs text-slate-300">
+                    Transferred to <span className="font-bold text-amber-300">{transferSuccess.recipientName}</span> ({transferSuccess.recipientPhone})
+                  </p>
+                </div>
+
+                <div className="p-3.5 rounded-2xl bg-slate-950 border border-white/10 text-left space-y-2 text-xs">
+                  <div className="flex items-center justify-between text-[11px] text-slate-400">
+                    <span>New Ticket Link:</span>
+                    <span className="text-emerald-400 font-semibold">SMS Sent ✓</span>
+                  </div>
+                  <div className="p-2 rounded-xl bg-slate-900 font-mono text-[10px] text-amber-300 break-all select-all">
+                    {transferSuccess.newTicketPassUrl}
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-2 pt-2">
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(transferSuccess.newTicketPassUrl);
+                      alert('New ticket pass link copied to clipboard!');
+                    }}
+                    className="w-full inline-flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs border border-slate-700 transition"
+                  >
+                    <Copy className="h-4 w-4 text-amber-400" />
+                    <span>Copy Recipient Pass Link</span>
+                  </button>
+
+                  <a
+                    href={`https://t.me/share/url?url=${encodeURIComponent(transferSuccess.newTicketPassUrl)}&text=${encodeURIComponent(`Here is your ticket for ${transferSuccess.eventTitle}!`)}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="w-full inline-flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-[#229ED9] hover:bg-[#1E8DBE] text-white font-bold text-xs transition"
+                  >
+                    <MessageCircle className="h-4 w-4" />
+                    <span>Share on Telegram</span>
+                  </a>
+
+                  <button
+                    onClick={() => {
+                      setIsTransferModalOpen(false);
+                      router.push(`/t/${transferSuccess.newSecurityHash}`);
+                    }}
+                    className="w-full py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-black font-black text-xs transition shadow-glowGold"
+                  >
+                    View New Recipient Pass
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Transfer History Modal */}
+      {isHistoryModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn">
+          <div className="w-full max-w-md rounded-3xl bg-[#0F172A] border border-white/10 p-6 space-y-4 shadow-2xl relative">
+            <button
+              onClick={() => setIsHistoryModalOpen(false)}
+              className="absolute top-5 right-5 text-slate-400 hover:text-white p-1 rounded-lg hover:bg-white/10 transition"
+            >
+              <X className="h-5 w-5" />
+            </button>
+
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 text-amber-400">
+                <History className="h-5 w-5" />
+                <h2 className="text-lg font-black text-white">Ticket Transfer Audit Trail</h2>
+              </div>
+              <p className="text-xs text-slate-400 font-mono">
+                Ticket: {ticket.ticketCode}
+              </p>
+            </div>
+
+            {loadingHistory ? (
+              <div className="py-12 text-center text-xs text-slate-400">
+                <Loader2 className="h-6 w-6 animate-spin text-amber-400 mx-auto mb-2" />
+                Loading audit trail...
+              </div>
+            ) : transferHistory.length > 0 ? (
+              <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
+                {transferHistory.map((item, idx) => (
+                  <div key={item.id || idx} className="p-3.5 rounded-2xl bg-slate-900 border border-white/10 space-y-2 text-xs">
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span className="text-amber-400 font-bold">Transfer #{transferHistory.length - idx}</span>
+                      <span className="text-slate-500">
+                        {new Date(item.transferredAt).toLocaleString()}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 text-slate-300">
+                      <span className="font-semibold text-white">{item.senderName}</span>
+                      <ArrowRight className="h-3 w-3 text-amber-400 shrink-0" />
+                      <span className="font-semibold text-white">{item.recipientName}</span>
+                    </div>
+                    <div className="text-[11px] text-slate-400 flex items-center justify-between">
+                      <span>Phone: {item.recipientPhone}</span>
+                      {item.reason && <span className="italic text-slate-500">&ldquo;{item.reason}&rdquo;</span>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="p-6 rounded-2xl bg-slate-900/50 border border-white/5 text-center text-xs text-slate-400">
+                No transfer history recorded yet for this pass.
+              </div>
+            )}
+
+            <button
+              onClick={() => setIsHistoryModalOpen(false)}
+              className="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-semibold text-xs transition"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

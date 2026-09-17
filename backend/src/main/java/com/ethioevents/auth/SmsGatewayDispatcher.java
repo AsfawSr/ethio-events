@@ -53,6 +53,15 @@ public class SmsGatewayDispatcher implements SmsGatewayService {
     }
 
     @Override
+    public void sendTicketTransferSms(String recipientPhone, String senderName, String eventTitle, String ticketCode, String ticketPassUrl) {
+        String message = String.format(
+                "🎁 EthioEvents Transfer: %s gifted you a ticket for %s! Ticket Code: %s. Access your verified QR pass here: %s. %s ቲኬት አስተላልፎልዎታል!",
+                senderName, eventTitle, ticketCode, ticketPassUrl, senderName
+        );
+        dispatch(recipientPhone, "TICKET_TRANSFER", message);
+    }
+
+    @Override
     public void sendEventUpdateSms(String phoneNumber, String eventTitle, String message) {
         String fullMessage = String.format("EthioEvents Alert [%s]: %s", eventTitle, message);
         dispatch(phoneNumber, "EVENT_UPDATE", fullMessage);

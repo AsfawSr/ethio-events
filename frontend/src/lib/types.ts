@@ -406,3 +406,37 @@ export interface ApiResponse<T> {
   };
   timestamp: string;
 }
+
+export interface TransferTicketRequest {
+  ticketSecurityHash: string;
+  senderName?: string;
+  senderPhone?: string;
+  recipientName: string;
+  recipientPhone: string;
+  reason?: string;
+}
+
+export interface TransferTicketResponse {
+  transferId: string;
+  ticketCode: string;
+  eventTitle: string;
+  previousSecurityHash: string;
+  newSecurityHash: string;
+  newTicketPassUrl: string;
+  recipientName: string;
+  recipientPhone: string;
+  transferredAt: string;
+}
+
+export interface TicketTransferHistoryItem {
+  id: string;
+  senderName: string;
+  senderPhone: string;
+  recipientName: string;
+  recipientPhone: string;
+  reason?: string;
+  previousSecurityHash: string;
+  newSecurityHash: string;
+  transferredAt: string;
+}
+

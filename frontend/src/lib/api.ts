@@ -348,5 +348,15 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(data),
     }),
+
+  // P2P Ticket Transfer & Cryptographic Re-Signing
+  transferTicket: (data: import('./types').TransferTicketRequest) =>
+    fetchApi<import('./types').TransferTicketResponse>('/tickets/public/transfer', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  getTicketTransferHistory: (ticketCode: string) =>
+    fetchApi<import('./types').TicketTransferHistoryItem[]>(`/tickets/public/transfers/${encodeURIComponent(ticketCode)}`),
 };
 

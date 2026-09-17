@@ -27,6 +27,17 @@ public class MockSmsGateway implements SmsGatewayService {
     }
 
     @Override
+    public void sendTicketTransferSms(String recipientPhone, String senderName, String eventTitle, String ticketCode, String ticketPassUrl) {
+        log.info("═══════════════════════════════════════════════════════════");
+        log.info(" [MOCK SMS TICKET TRANSFER] Sent to {}", recipientPhone);
+        log.info(" Sender: {}", senderName);
+        log.info(" Event: {}", eventTitle);
+        log.info(" Ticket Code: {}", ticketCode);
+        log.info(" Direct Ticket Pass Link: {}", ticketPassUrl);
+        log.info("═══════════════════════════════════════════════════════════");
+    }
+
+    @Override
     public void sendEventUpdateSms(String phoneNumber, String eventTitle, String message) {
         log.info("═══════════════════════════════════════════════════════════");
         log.info(" [MOCK SMS EVENT UPDATE] Sent to {}: [{}] {}", phoneNumber, eventTitle, message);
