@@ -416,5 +416,37 @@ export const api = {
 
   getAttendeeCsvUrl: (eventId: string) => `${API_BASE}/reports/events/${eventId}/attendees/csv`,
   getFinancialCsvUrl: (eventId: string) => `${API_BASE}/reports/events/${eventId}/financials/csv`,
+
+  // Organizer SMS Broadcast Campaigns & Automated Pre-Event Reminders (AfroMessage Engine)
+  getEventBroadcasts: (eventId: string) =>
+    fetchApi<import('./types').BroadcastCampaignItem[]>(`/organizer/broadcasts/event/${eventId}`),
+
+  createBroadcastCampaign: (data: import('./types').CreateBroadcastRequest) =>
+    fetchApi<import('./types').BroadcastCampaignItem>('/organizer/broadcasts', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  sendTestBroadcast: (data: import('./types').TestBroadcastRequest) =>
+    fetchApi<boolean>('/organizer/broadcasts/test-send', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  getAudienceEstimate: (eventId: string, targetFilter?: string, targetTicketTypeId?: string) =>
+    fetchApi<import('./types').AudienceEstimateResponse>(
+      `/organizer/broadcasts/audience-count?eventId=${eventId}${
+        targetFilter ? `&targetFilter=${targetFilter}` : ''
+      }${targetTicketTypeId ? `&targetTicketTypeId=${targetTicketTypeId}` : ''}`
+    ),
+
+  getEventReminders: (eventId: string) =>
+    fetchApi<import('./types').AutomatedReminderConfig>(`/organizer/reminders/event/${eventId}`),
+
+  updateEventReminders: (eventId: string, data: import('./types').UpdateRemindersRequest) =>
+    fetchApi<import('./types').AutomatedReminderConfig>(`/organizer/reminders/event/${eventId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
 };
 

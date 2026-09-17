@@ -652,4 +652,63 @@ export interface EventAnalyticsSummary {
   topPromoters: PromoterLeaderboardEntry[];
 }
 
+export interface BroadcastCampaignItem {
+  id: string;
+  eventId: string;
+  eventTitle: string;
+  title: string;
+  targetFilter: 'ALL_ATTENDEES' | 'VIP_ONLY' | 'REGULAR_ONLY' | 'SPECIFIC_TIER' | string;
+  targetTicketTypeId?: string;
+  targetTierName: string;
+  messageContent: string;
+  language: string;
+  recipientCount: number;
+  deliveredCount: number;
+  failedCount: number;
+  status: 'DRAFT' | 'PROCESSING' | 'COMPLETED' | 'FAILED' | string;
+  scheduledAt?: string;
+  sentAt?: string;
+  createdAt: string;
+}
 
+export interface CreateBroadcastRequest {
+  eventId: string;
+  title: string;
+  targetFilter?: string;
+  targetTicketTypeId?: string;
+  messageContent: string;
+  language?: string;
+  scheduledAt?: string;
+}
+
+export interface AudienceEstimateResponse {
+  eventId: string;
+  targetFilter: string;
+  estimatedRecipientsCount: number;
+  totalTicketsCount: number;
+  targetTierName: string;
+}
+
+export interface TestBroadcastRequest {
+  eventId: string;
+  testPhoneNumber: string;
+  messageContent: string;
+}
+
+export interface AutomatedReminderConfig {
+  eventId: string;
+  eventTitle: string;
+  tMinus24HoursEnabled: boolean;
+  tMinus24HoursSent: boolean;
+  tMinus24HoursSentAt?: string;
+  tMinus24HoursTotalSent: number;
+  tMinus2HoursEnabled: boolean;
+  tMinus2HoursSent: boolean;
+  tMinus2HoursSentAt?: string;
+  tMinus2HoursTotalSent: number;
+}
+
+export interface UpdateRemindersRequest {
+  tMinus24HoursEnabled?: boolean;
+  tMinus2HoursEnabled?: boolean;
+}

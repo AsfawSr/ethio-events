@@ -169,6 +169,40 @@ public class DatabaseSchemaInitializer implements BeanPostProcessor {
                 )
             """);
 
+            // 8. Ensure event_broadcast_campaigns and event_automated_reminders tables exist
+            stmt.execute("""
+                CREATE TABLE IF NOT EXISTS event_broadcast_campaigns (
+                    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                    event_id UUID NOT NULL,
+                    organizer_id UUID,
+                    title VARCHAR(255) NOT NULL,
+                    target_filter VARCHAR(50) NOT NULL DEFAULT 'ALL_ATTENDEES',
+                    target_ticket_type_id UUID,
+                    message_content TEXT NOT NULL,
+                    language VARCHAR(10) DEFAULT 'en',
+                    recipient_count INT NOT NULL DEFAULT 0,
+                    delivered_count INT NOT NULL DEFAULT 0,
+                    failed_count INT NOT NULL DEFAULT 0,
+                    status VARCHAR(50) NOT NULL DEFAULT 'COMPLETED',
+                    scheduled_at TIMESTAMP WITH TIME ZONE,
+                    sent_at TIMESTAMP WITH TIME ZONE,
+                    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+                )
+            """);
+
+            stmt.execute("""
+                CREATE TABLE IF NOT EXISTS event_automated_reminders (
+                    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                    event_id UUID NOT NULL,
+                    reminder_type VARCHAR(50) NOT NULL,
+                    enabled BOOLEAN NOT NULL DEFAULT true,
+                    sent_at TIMESTAMP WITH TIME ZONE,
+                    total_sent INT NOT NULL DEFAULT 0,
+                    status VARCHAR(50) NOT NULL DEFAULT 'PENDING',
+                    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+                )
+            """);
+
             log.info("✓ [DatabaseSchemaInitializer] PostgreSQL schema verified and healed successfully.");
         } catch (Exception e) {
             log.warn("⚠ [DatabaseSchemaInitializer] Schema healing encountered warning (will rely on Hibernate ddl-auto): {}", e.getMessage());
