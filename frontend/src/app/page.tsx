@@ -144,13 +144,15 @@ export default function HomePage() {
   return (
     <div className="space-y-12 pb-24">
       {/* 1. Hero Spotlight Carousel Section */}
-      <section className="relative overflow-hidden pt-8 pb-12 px-4 sm:px-6 lg:px-8 border-b border-white/10">
-        {/* Background Radial Glow */}
-        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[500px] bg-gradient-to-tr from-amber-500/15 via-emerald-500/10 to-sky-500/15 blur-3xl pointer-events-none rounded-full" />
+      <section className="relative overflow-hidden pt-8 pb-14 px-4 sm:px-6 lg:px-8 border-b border-white/10">
+        {/* Full-width Multi-layered Ambient Glows */}
+        <div className="absolute -top-32 left-1/4 -translate-x-1/2 w-[700px] h-[550px] bg-amber-500/15 blur-[140px] pointer-events-none rounded-full" />
+        <div className="absolute top-1/2 right-1/4 translate-x-1/2 -translate-y-1/2 w-[650px] h-[500px] bg-emerald-500/10 blur-[130px] pointer-events-none rounded-full" />
+        <div className="absolute -bottom-20 left-1/2 -translate-x-1/2 w-[900px] h-[400px] bg-sky-500/10 blur-[150px] pointer-events-none rounded-full" />
 
-        <div className="relative mx-auto max-w-6xl space-y-8">
+        <div className="relative mx-auto max-w-7xl 2xl:max-w-[1536px] space-y-10">
           {/* Header Title & Tag */}
-          <div className="text-center space-y-4 max-w-3xl mx-auto">
+          <div className="text-center space-y-4 max-w-4xl mx-auto">
             <div className="inline-flex items-center gap-2 rounded-full bg-slate-800/80 border border-amber-500/30 px-4 py-1.5 text-xs font-semibold text-amber-300 backdrop-blur-md shadow-glowGold/20 animate-fadeIn">
               <Sparkles className="h-3.5 w-3.5 text-amber-400" />
               <span>
@@ -167,33 +169,25 @@ export default function HomePage() {
               </span>
             </h1>
 
-            <p className="text-sm sm:text-base text-slate-300 leading-relaxed font-normal">
+            <p className="text-sm sm:text-base text-slate-300 leading-relaxed font-normal max-w-2xl mx-auto">
               {t.heroSubtitle}
             </p>
           </div>
 
           {/* Featured Spotlight Card */}
           {currentSpotlight && (
-            <div className="relative rounded-3xl border border-amber-500/30 bg-gradient-to-br from-slate-900 via-slate-900/90 to-slate-950 p-6 sm:p-8 shadow-2xl shadow-amber-500/10 overflow-hidden">
-              <div className="absolute top-0 right-0 h-full w-1/2 opacity-20 pointer-events-none hidden md:block">
+            <div className="relative rounded-3xl border border-amber-500/30 bg-gradient-to-br from-slate-900/95 via-slate-900/90 to-slate-950 p-6 sm:p-8 lg:p-10 shadow-2xl shadow-amber-500/10 overflow-hidden">
+              {/* Background ambient cover image */}
+              <div className="absolute inset-0 opacity-15 pointer-events-none">
                 <img
                   src={currentSpotlight.bannerImageUrl}
                   alt={currentSpotlight.title}
-                  className="h-full w-full object-cover mask-gradient-left"
+                  className="h-full w-full object-cover blur-md scale-105"
                 />
               </div>
 
-              <div className="relative z-10 grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
-                {/* Spotlight Image Thumbnail (Mobile) */}
-                <div className="md:hidden h-48 w-full rounded-2xl overflow-hidden border border-white/10">
-                  <img
-                    src={currentSpotlight.bannerImageUrl}
-                    alt={currentSpotlight.title}
-                    className="h-full w-full object-cover"
-                  />
-                </div>
-
-                <div className="md:col-span-8 space-y-4">
+              <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+                <div className="lg:col-span-7 space-y-5">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="inline-flex items-center gap-1 bg-amber-500 text-black text-[11px] font-black uppercase px-2.5 py-1 rounded-full shadow-glowGold">
                       <Flame className="h-3.5 w-3.5 text-black" />
@@ -205,91 +199,106 @@ export default function HomePage() {
                       </span>
                     )}
                     {currentSpotlight.neighborhood && (
-                      <span className="text-xs font-semibold text-slate-300 bg-slate-800 border border-slate-700 px-2.5 py-1 rounded-full flex items-center gap-1">
+                      <span className="text-xs font-semibold text-slate-300 bg-slate-800/90 border border-slate-700 px-2.5 py-1 rounded-full flex items-center gap-1">
                         <MapPin className="h-3 w-3 text-amber-400" />
                         {language === 'am' && currentSpotlight.neighborhoodAmharic ? currentSpotlight.neighborhoodAmharic : currentSpotlight.neighborhood}
                       </span>
                     )}
                   </div>
 
-                  <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-white leading-tight">
+                  <h2 className="text-2xl sm:text-3xl lg:text-4xl 2xl:text-5xl font-black text-white leading-tight">
                     {currentSpotlight.title}
                   </h2>
 
-                  <p className="text-xs sm:text-sm text-slate-300 line-clamp-2 max-w-2xl leading-relaxed">
+                  <p className="text-xs sm:text-sm text-slate-300 line-clamp-3 leading-relaxed max-w-2xl">
                     {currentSpotlight.description}
                   </p>
 
-                  <div className="flex flex-wrap items-center gap-4 text-xs text-slate-300 pt-1">
-                    <div className="flex items-center gap-1.5 bg-black/40 px-3 py-1.5 rounded-xl border border-white/10">
+                  <div className="flex flex-wrap items-center gap-3 text-xs text-slate-300 pt-1">
+                    <div className="flex items-center gap-1.5 bg-black/50 px-3.5 py-2 rounded-xl border border-white/10 backdrop-blur-sm">
                       <Calendar className="h-4 w-4 text-amber-400" />
                       <span className="font-bold text-amber-300">{currentSpotlight.startTime.ethiopianDateFormatted}</span>
                       <span className="text-slate-400">({currentSpotlight.startTime.ethiopianTimeFormatted})</span>
                     </div>
 
-                    <div className="flex items-center gap-1.5 bg-black/40 px-3 py-1.5 rounded-xl border border-white/10">
+                    <div className="flex items-center gap-1.5 bg-black/50 px-3.5 py-2 rounded-xl border border-white/10 backdrop-blur-sm">
                       <MapPin className="h-4 w-4 text-amber-400" />
                       <span>{currentSpotlight.venueName}</span>
                     </div>
                   </div>
+
+                  <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-t border-white/10">
+                    <div>
+                      <span className="text-[11px] uppercase font-bold text-slate-400 block">
+                        {t.fromPrice}
+                      </span>
+                      <span className="text-2xl sm:text-3xl font-black text-amber-400">
+                        {currentSpotlight.minPrice > 0 ? (
+                          <>
+                            {currentSpotlight.minPrice.toLocaleString()} <span className="text-sm font-normal text-slate-400">ETB</span>
+                          </>
+                        ) : (
+                          <span className="text-emerald-400">Free Admission</span>
+                        )}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      <Link
+                        href={`/events/${currentSpotlight.slug}`}
+                        className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-amber-400 via-amber-300 to-yellow-400 px-7 py-3.5 text-sm font-black text-black shadow-glowGold hover:from-amber-300 hover:to-yellow-300 transition active:scale-95"
+                      >
+                        <span>{t.getTickets}</span>
+                        <ArrowRight className="h-4 w-4 text-black" />
+                      </Link>
+
+                      {featuredEvents.length > 1 && (
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            onClick={() => setActiveSpotlightIdx((prev) => (prev - 1 + featuredEvents.length) % featuredEvents.length)}
+                            className="h-11 w-11 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-white flex items-center justify-center border border-slate-700 transition"
+                            title="Previous featured"
+                          >
+                            <ChevronLeft className="h-5 w-5" />
+                          </button>
+                          <button
+                            onClick={() => setActiveSpotlightIdx((prev) => (prev + 1) % featuredEvents.length)}
+                            className="h-11 w-11 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-white flex items-center justify-center border border-slate-700 transition"
+                            title="Next featured"
+                          >
+                            <ChevronRight className="h-5 w-5" />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
 
-                <div className="md:col-span-4 flex flex-col sm:flex-row md:flex-col items-start md:items-end justify-between gap-4">
-                  <div className="text-left md:text-right">
-                    <span className="text-[11px] uppercase font-bold text-slate-400 block">
-                      {t.fromPrice}
+                {/* Right side banner image presentation */}
+                <div className="lg:col-span-5 relative h-64 sm:h-80 lg:h-96 w-full rounded-2xl overflow-hidden border border-white/15 shadow-2xl group">
+                  <img
+                    src={currentSpotlight.bannerImageUrl}
+                    alt={currentSpotlight.title}
+                    className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent pointer-events-none" />
+                  <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between text-xs text-white">
+                    <span className="font-semibold bg-black/60 backdrop-blur-md px-3 py-1 rounded-lg border border-white/10">
+                      📍 {currentSpotlight.venueAddress}
                     </span>
-                    <span className="text-2xl sm:text-3xl font-black text-amber-400">
-                      {currentSpotlight.minPrice > 0 ? (
-                        <>
-                          {currentSpotlight.minPrice.toLocaleString()} <span className="text-sm font-normal text-slate-400">ETB</span>
-                        </>
-                      ) : (
-                        <span className="text-emerald-400">Free Admission</span>
-                      )}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-3 w-full sm:w-auto">
-                    <Link
-                      href={`/events/${currentSpotlight.slug}`}
-                      className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-amber-400 via-amber-300 to-yellow-400 px-6 py-3.5 text-sm font-black text-black shadow-glowGold hover:from-amber-300 hover:to-yellow-300 transition"
-                    >
-                      <span>{t.getTickets}</span>
-                      <ArrowRight className="h-4 w-4 text-black" />
-                    </Link>
-
-                    {featuredEvents.length > 1 && (
-                      <div className="flex items-center gap-1">
-                        <button
-                          onClick={() => setActiveSpotlightIdx((prev) => (prev - 1 + featuredEvents.length) % featuredEvents.length)}
-                          className="h-10 w-10 rounded-xl bg-slate-800 hover:bg-slate-700 text-white flex items-center justify-center border border-slate-700 transition"
-                          title="Previous featured"
-                        >
-                          <ChevronLeft className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={() => setActiveSpotlightIdx((prev) => (prev + 1) % featuredEvents.length)}
-                          className="h-10 w-10 rounded-xl bg-slate-800 hover:bg-slate-700 text-white flex items-center justify-center border border-slate-700 transition"
-                          title="Next featured"
-                        >
-                          <ChevronRight className="h-4 w-4" />
-                        </button>
-                      </div>
-                    )}
                   </div>
                 </div>
               </div>
 
               {/* Carousel Indicator Dots */}
               {featuredEvents.length > 1 && (
-                <div className="flex items-center justify-center gap-1.5 pt-4">
+                <div className="flex items-center justify-center gap-1.5 pt-6">
                   {featuredEvents.map((_, idx) => (
                     <button
                       key={idx}
                       onClick={() => setActiveSpotlightIdx(idx)}
                       className={`h-1.5 rounded-full transition-all ${
-                        idx === activeSpotlightIdx ? 'w-6 bg-amber-400' : 'w-2 bg-slate-700 hover:bg-slate-600'
+                        idx === activeSpotlightIdx ? 'w-8 bg-amber-400 shadow-glowGold' : 'w-2 bg-slate-700 hover:bg-slate-600'
                       }`}
                     />
                   ))}
@@ -299,7 +308,7 @@ export default function HomePage() {
           )}
 
           {/* Search Bar & Filter Trigger */}
-          <div className="mx-auto max-w-2xl">
+          <div className="mx-auto max-w-3xl lg:max-w-4xl space-y-3">
             <div className="relative flex items-center">
               <Search className="absolute left-4 h-5 w-5 text-amber-400" />
               <input
@@ -330,6 +339,28 @@ export default function HomePage() {
                 <SlidersHorizontal className="h-4 w-4" />
               </button>
             </div>
+
+            {/* Quick Suggestion Chips */}
+            <div className="flex items-center justify-center flex-wrap gap-2 text-xs text-slate-400 pt-1">
+              <span className="font-semibold text-slate-500">{language === 'am' ? 'ፈጣን ፍለጋ:' : 'Trending:'}</span>
+              {[
+                { label: '🔥 Rophnan', query: 'Rophnan' },
+                { label: '💻 Tech Summit', query: 'Tech' },
+                { label: '🎭 Comedy', query: 'Comedy' },
+                { label: '🏃 10K Run', query: 'Run' },
+                { label: '📍 Bole', query: 'Bole' },
+                { label: '☕ Coffee', query: 'Coffee' },
+              ].map((chip) => (
+                <button
+                  key={chip.label}
+                  type="button"
+                  onClick={() => setSearchQuery(chip.query)}
+                  className="bg-slate-900/80 hover:bg-slate-800 hover:text-amber-300 border border-white/10 px-2.5 py-1 rounded-lg transition"
+                >
+                  {chip.label}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Trust Value Badges */}
@@ -351,7 +382,7 @@ export default function HomePage() {
       </section>
 
       {/* 2. Interactive Discovery & Filter Hub */}
-      <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 space-y-6">
+      <section className="mx-auto max-w-7xl 2xl:max-w-[1536px] px-4 sm:px-6 lg:px-8 space-y-6">
         {/* Category Filter Pills (Horizontal Scroll) */}
         <div className="space-y-3">
           <div className="flex items-center justify-between">
@@ -585,13 +616,13 @@ export default function HomePage() {
             </div>
           </div>
         ) : loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-pulse">
-            {[1, 2, 3, 4, 5, 6].map((n) => (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-6 animate-pulse">
+            {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
               <div key={n} className="h-96 rounded-3xl bg-slate-900 border border-white/5" />
             ))}
           </div>
         ) : filteredEvents.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-6 sm:gap-8">
             {filteredEvents.map((event) => (
               <EventCard key={event.id} event={event} />
             ))}
