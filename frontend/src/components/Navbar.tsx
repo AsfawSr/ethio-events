@@ -135,14 +135,16 @@ export default function Navbar() {
               <span className="sm:hidden">Host</span>
             </Link>
 
-            {/* Create Event Button */}
-            <Link
-              href="/events/create"
-              className="hidden sm:flex items-center gap-1.5 text-sm font-semibold text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 hover:border-amber-400/50 px-3 py-2 rounded-xl transition shadow-sm active:scale-95"
-            >
-              <Sparkles className="h-4 w-4 text-amber-400" />
-              <span>{t.createEvent}</span>
-            </Link>
+            {/* Create Event Button (Only shown when logged in as an Organizer) */}
+            {organizerSession && (
+              <Link
+                href="/events/create"
+                className="hidden sm:flex items-center gap-1.5 text-sm font-semibold text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 hover:border-amber-400/50 px-3 py-2 rounded-xl transition shadow-sm active:scale-95"
+              >
+                <Sparkles className="h-4 w-4 text-amber-400" />
+                <span>{t.createEvent}</span>
+              </Link>
+            )}
 
             {/* My Tickets Button (Zero-login on-demand lookup) */}
             <button
